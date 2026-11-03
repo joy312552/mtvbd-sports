@@ -28,14 +28,8 @@
             <div class="player-empty">
               <div class="ico">📺</div>
               <b>শীঘ্রই লাইভ শুরু হবে</b>
-              <span>নিচের বক্সে ইউটিউব লাইভ লিংক দিয়ে "চালান" চাপুন</span>
+              <span>আমাদের সাথেই থাকুন — ম্যাচ শুরু হলে এখানেই লাইভ দেখুন</span>
             </div>
-          </div>
-          <div class="player-bar">
-            <input id="live-input" type="url" placeholder="ইউটিউব লাইভ ভিডিও লিংক পেস্ট করুন…" autocomplete="off">
-            <button class="btn" id="play-btn">▶ চালান</button>
-            <button class="btn ghost" id="clear-btn">মুছুন</button>
-            <div class="player-msg" id="player-msg"></div>
           </div>
         </div>
         <aside class="side-card" id="next-match"></aside>
@@ -70,8 +64,8 @@
         <h2>আপনার টুর্নামেন্ট লাইভ স্ট্রিমিং করতে চান?</h2>
         <p>ক্রিকেট, ফুটবল, কাবাডিসহ যেকোনো স্পোর্টস ইভেন্ট প্রফেশনাল লাইভ স্ট্রিমিংয়ে সম্প্রচার করতে চাইলে আজই আমাদের সাথে যোগাযোগ করুন।</p>
         <div class="cta-actions">
-          <a class="btn big fb" href="https://www.facebook.com/mymensinghtvbd24" target="_blank" rel="noopener">📘 ফেসবুক পেইজ</a>
-          <a class="btn big call" href="tel:+8801711615560">📞 01711615560</a>
+          <a class="btn big fb" id="cta-fb" href="https://www.facebook.com/mymensinghtvbd24" target="_blank" rel="noopener">📘 ফেসবুক পেইজ</a>
+          <a class="btn big call" id="cta-call" href="tel:+8801711615560">📞 01711615560</a>
         </div>
       </div>
     </div>
@@ -79,6 +73,8 @@
 </main>
 
 <footer id="site-footer"></footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
 <script src="js/data.js"></script>
 <script src="js/app.js"></script>
 </body>

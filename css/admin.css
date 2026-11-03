@@ -1,0 +1,85 @@
+body.admin{background:#eef1f8;min-height:100vh}
+.boot{padding:80px 20px;text-align:center;color:var(--muted)}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(30px);background:var(--navy);color:#fff;padding:12px 22px;border-radius:12px;opacity:0;pointer-events:none;transition:.3s;z-index:99;max-width:92vw;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.bad{background:#b3121f}
+
+/* login */
+.login-wrap{min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(900px 500px at 80% -10%,rgba(225,29,46,.35),transparent 60%),var(--navy)}
+.login-card{width:100%;max-width:400px;background:#fff;border-radius:20px;padding:30px 26px;box-shadow:0 30px 70px rgba(0,0,0,.45)}
+.login-card .logo{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,var(--red),#a30f1d);display:grid;place-items:center;font-size:26px;margin:0 auto 12px}
+.login-card h1{text-align:center;font-size:24px}
+.login-card p.sub{text-align:center;color:var(--muted);margin-bottom:18px}
+.err{color:#c4111f;font-size:14px;min-height:20px;margin:4px 0 10px}
+.warn{background:#fff6e0;border:1px solid #f3d27a;color:#6b4a00;border-radius:12px;padding:14px 16px;margin:14px 0;font-size:14.5px}
+
+/* shell */
+.adm-top{background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px;position:sticky;top:0;z-index:30;flex-wrap:wrap}
+.adm-brand{font-weight:700;letter-spacing:1px}
+.adm-brand b{color:var(--red2)}
+.adm-brand small{font-weight:500;color:#9aa3c4;letter-spacing:0;margin-left:6px}
+.adm-user{display:flex;align-items:center;gap:12px;font-size:13px;color:#c5cbe4}
+.adm-tabs{background:#fff;border-bottom:1px solid var(--line);display:flex;gap:4px;padding:0 12px;overflow-x:auto}
+.adm-tabs button,.adm-tabs a{border:0;background:none;font:inherit;font-weight:600;color:var(--muted);padding:14px 16px;cursor:pointer;white-space:nowrap;border-bottom:3px solid transparent}
+.adm-tabs .on{color:var(--red);border-color:var(--red)}
+.adm-main{max-width:980px;margin:0 auto;padding:22px 16px 90px}
+.btn.small{padding:8px 14px;font-size:14px;border-radius:9px}
+.btn.dark{background:var(--navy)}
+.btn.dark:hover{background:#1c2550}
+.btn.ghost{background:#e9edf8;color:var(--text)}
+.btn.ghost:hover{background:#dbe1f2}
+.adm-top .btn.ghost{background:rgba(255,255,255,.12);color:#fff}
+.btn.danger{background:#fff;color:#c4111f;border:1px solid #f0b7bd}
+.btn.danger:hover{background:#c4111f;color:#fff}
+
+/* boxes & forms */
+.box2{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:18px;box-shadow:0 4px 14px rgba(10,15,36,.04)}
+.box2 h3{font-size:18px;margin-bottom:4px}
+.box2 .hint{color:var(--muted);font-size:13.5px;margin-bottom:14px}
+.f{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.f>span{font-size:13.5px;font-weight:600;color:#3a4266}
+.f input,.f select,.f textarea{font:inherit;font-size:15px;border:1px solid #d5dbec;border-radius:10px;padding:10px 12px;background:#fff;color:var(--text);outline:none;width:100%}
+.f textarea{min-height:90px;resize:vertical}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:var(--red);box-shadow:0 0 0 3px rgba(225,29,46,.12)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+.grid2 .full{grid-column:1/-1}
+.preview16{aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden;margin:6px 0 14px}
+.preview16 iframe{width:100%;height:100%;border:0}
+.prev-empty{height:100%;display:grid;place-items:center;color:#8d96b8;font-size:14px;text-align:center;padding:10px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+
+/* list */
+.list-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.list-head h2{font-size:24px}
+.t-row{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.t-row .thumb{width:84px;height:56px;border-radius:10px;background:linear-gradient(135deg,#0b6b3a,#0a2f6b);display:grid;place-items:center;font-size:26px;overflow:hidden;flex:0 0 auto}
+.t-row .thumb img{width:100%;height:100%;object-fit:cover}
+.t-row .info{flex:1;min-width:200px}
+.t-row .info b{display:block;line-height:1.4}
+.t-row .info small{color:var(--muted)}
+.t-row select{font:inherit;border:1px solid #d5dbec;border-radius:9px;padding:7px 8px;background:#fff}
+.t-row .acts{display:flex;gap:8px}
+
+/* editor */
+.ed-head{display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap}
+.ed-head h2{font-size:24px}
+.row-card{border:1px solid var(--line);background:#f8f9fd;border-radius:12px;padding:12px 12px 6px;margin-bottom:10px;position:relative}
+.row-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:0 12px}
+.row-grid .f{grid-column:span 2;margin-bottom:10px}
+.row-grid .f.w3{grid-column:span 3}
+.row-grid .f.w6{grid-column:span 6}
+.row-grid .f.w1{grid-column:span 1}
+.row-actions{display:flex;gap:6px;justify-content:flex-end;margin:0 0 8px}
+.row-actions button{border:1px solid #d5dbec;background:#fff;border-radius:8px;padding:4px 10px;font:inherit;font-size:13px;cursor:pointer}
+.row-actions button:hover{background:#eef1f8}
+.row-actions button[data-del]:hover{background:#c4111f;color:#fff;border-color:#c4111f}
+.savebar{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:12px 16px;display:flex;gap:10px;justify-content:center;z-index:30}
+.img-prev{width:220px;max-width:100%;aspect-ratio:16/10;border-radius:12px;background:#e9edf8;display:grid;place-items:center;overflow:hidden;margin-bottom:10px;color:var(--muted)}
+.img-prev img{width:100%;height:100%;object-fit:cover}
+
+@media(max-width:700px){
+  .grid2{grid-template-columns:1fr}
+  .row-grid{grid-template-columns:1fr 1fr}
+  .row-grid .f,.row-grid .f.w3,.row-grid .f.w1{grid-column:span 2}
+  .row-grid .f.w1h{grid-column:span 1}
+}

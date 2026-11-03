@@ -4,7 +4,7 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 const STATUS = { live: "লাইভ", upcoming: "আসন্ন", completed: "সম্পন্ন" };
-const SPORT_ICON = { "ফুটবল": "⚽", "ক্রিকেট": "🏏", "কাবাডি": "🤼" };
+const SPORT_ICON = { "ফুটবল": "⚽", "ক্রিকেট": "🏏", "কাবাডি": "🤼", "ভলিবল": "🏐", "ব্যাডমিন্টন": "🏸", "বাস্কেটবল": "🏀", "হ্যান্ডবল": "🤾" };
 const SPORT_CLASS = { "ফুটবল": "football", "ক্রিকেট": "cricket", "কাবাডি": "kabaddi" };
 
 const ICONS = {
@@ -61,30 +61,23 @@ function ytId(u) {
   return null;
 }
 
+/* লাইভ লিংক শুধু অ্যাডমিন প্যানেল (বা data.js) থেকে আসে; দর্শক কোনো লিংক দিতে পারে না */
+let _playerEmpty = null, _playerId;
 function initPlayer() {
   const box = $("#player");
   if (!box) return;
-  const input = $("#live-input"), msg = $("#player-msg"), badge = $("#live-badge");
-  const empty = box.innerHTML;
-  function play(url, save) {
-    const id = ytId(url);
-    if (!id) { msg.textContent = "সঠিক ইউটিউব লিংক দিন (যেমন: https://www.youtube.com/watch?v=...)"; return false; }
-    msg.textContent = "";
+  const badge = $("#live-badge");
+  if (_playerEmpty === null) _playerEmpty = box.innerHTML;
+  const id = ytId(window.SITE.liveUrl);
+  if (id === _playerId) return;
+  _playerId = id;
+  if (id) {
     box.innerHTML = `<iframe src="https://www.youtube.com/embed/${id}?autoplay=1&rel=0&modestbranding=1" title="MTVBD Sports Live" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe>`;
     badge.style.display = "inline-flex";
-    if (save) { try { localStorage.setItem("mtvbd_live", url); } catch (e) {} }
-    return true;
+  } else {
+    box.innerHTML = _playerEmpty;
+    badge.style.display = "none";
   }
-  const qp = new URLSearchParams(location.search).get("live");
-  let saved = ""; try { saved = localStorage.getItem("mtvbd_live") || ""; } catch (e) {}
-  const start = qp || window.SITE.liveUrl || saved;
-  if (start) { input.value = start; play(start, false); } else { badge.style.display = "none"; }
-  $("#play-btn").addEventListener("click", () => play(input.value, true));
-  input.addEventListener("keydown", e => { if (e.key === "Enter") play(input.value, true); });
-  $("#clear-btn").addEventListener("click", () => {
-    input.value = ""; box.innerHTML = empty; badge.style.display = "none"; msg.textContent = "";
-    try { localStorage.removeItem("mtvbd_live"); } catch (e) {}
-  });
 }
 
 function nextMatch() {
@@ -162,7 +155,7 @@ function initDetail() {
   const root = $("#detail");
   if (!t) { root.innerHTML = `<div class="container" style="padding:80px 18px;text-align:center"><h2>টুর্নামেন্টটি খুঁজে পাওয়া যায়নি</h2><p style="margin:12px 0 20px;color:#6b7392">লিংকটি সঠিক নয় অথবা টুর্নামেন্টটি সরানো হয়েছে।</p><a class="btn" href="tournaments.html">সব টুর্নামেন্ট দেখুন</a></div>`; return; }
   document.title = t.title + " | MTVBD Sports";
-  const liveHref = "index.html" + (t.liveUrl ? "?live=" + encodeURIComponent(t.liveUrl) : "") + "#live";
+  const liveHref = "index.html#live";
   const glance = [t.start && `<span>🗓 ${esc(t.start)}</span>`, t.venue && `<span>📍 ${esc(t.venue)}</span>`, t.teamsCount && `<span>👥 ${esc(t.teamsCount)} দল</span>`].filter(Boolean).join("");
 
   const tabs = [
@@ -212,11 +205,107 @@ function initDetail() {
   $$("[data-go]").forEach(a => a.addEventListener("click", () => go(a.dataset.go)));
 }
 
+/* ---------- ডেটা লোড (Supabase থেকে; না পেলে data.js-এর ডিফল্ট ডেটা) ---------- */
+const ARR = ["overview", "fixtures", "results", "teams", "news", "awards"];
+function normalize(t) {
+  const o = Object.assign({ title: "", sport: "", status: "upcoming", image: "", short: "", organizer: "", venue: "", district: "", format: "", start: "", end: "", teamsCount: "", liveUrl: "" }, t);
+  ARR.forEach(k => { if (!Array.isArray(o[k])) o[k] = []; });
+  return o;
+}
+async function loadData() {
+  window.TOURNAMENTS = (window.TOURNAMENTS || []).map(normalize);
+  const cfg = window.SUPABASE_CONFIG;
+  if (!cfg || !cfg.url || !cfg.anonKey || !window.supabase) return;
+  try {
+    const sb = window.supabase.createClient(cfg.url, cfg.anonKey);
+    const work = Promise.all([
+      sb.from("settings").select("key,value"),
+      sb.from("tournaments").select("id,data,sort_order")
+    ]);
+    const [s, t] = await Promise.race([work, new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 6000))]);
+    if (s.error || t.error) throw (s.error || t.error);
+    const site = (s.data || []).find(r => r.key === "site");
+    if (!site) return; // অ্যাডমিন এখনো ডাটাবেস চালু করেনি → ডিফল্ট ডেটা
+    Object.assign(window.SITE, site.value || {});
+    window.TOURNAMENTS = (t.data || [])
+      .sort((a, b) => (b.sort_order || 0) - (a.sort_order || 0))
+      .map(r => normalize(Object.assign({}, r.data, { id: r.id })));
+  } catch (e) {
+    console.warn("ডাটাবেস থেকে ডেটা আনা যায়নি, ডিফল্ট ডেটা দেখানো হচ্ছে:", e);
+  }
+}
+function setCta() {
+  const fb = $("#cta-fb"), call = $("#cta-call");
+  if (fb) fb.href = window.SITE.facebook;
+  if (call) { call.href = "tel:" + window.SITE.phoneIntl; call.textContent = "📞 " + window.SITE.phone; }
+}
+
+/* ---------- ডেটা লোড (Supabase) ---------- */
+const bn2en = s => String(s || "").replace(/[০-৯]/g, d => "০১২৩৪৫৬৭৮৯".indexOf(d));
+function toIntl(phone) {
+  const d = bn2en(phone).replace(/\D/g, "");
+  if (!d) return "";
+  return d.startsWith("88") ? "+" + d : "+88" + d;
+}
+function cfgOK() {
+  const c = window.CONFIG;
+  return !!(c && c.SUPABASE_URL && c.SUPABASE_ANON_KEY && !/YOUR_/.test(c.SUPABASE_URL + c.SUPABASE_ANON_KEY));
+}
+async function sbGet(path) {
+  const c = window.CONFIG;
+  const headers = { apikey: c.SUPABASE_ANON_KEY };
+  if (!c.SUPABASE_ANON_KEY.startsWith("sb_")) headers.Authorization = "Bearer " + c.SUPABASE_ANON_KEY;
+  const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 8000);
+  try {
+    const r = await fetch(c.SUPABASE_URL.replace(/\/$/, "") + "/rest/v1/" + path, { headers, signal: ctl.signal, cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return await r.json();
+  } finally { clearTimeout(tm); }
+}
+function fromRow(r) {
+  return {
+    id: r.id, title: r.title, sport: r.sport, status: r.status, image: r.image, short: r.short,
+    organizer: r.organizer, venue: r.venue, district: r.district, format: r.format,
+    start: r.start_date, end: r.end_date, teamsCount: r.teams_count,
+    overview: String(r.overview || "").split(/\n+/).map(x => x.trim()).filter(Boolean),
+    fixtures: r.fixtures || [], results: r.results || [], teams: r.teams || [], news: r.news || [], awards: r.awards || []
+  };
+}
+function applySettings(rows) {
+  rows.forEach(s => {
+    if (s.key === "live_url") window.SITE.liveUrl = s.value || "";
+    if (s.key === "facebook" && s.value) window.SITE.facebook = s.value;
+    if (s.key === "phone" && s.value) { window.SITE.phone = s.value; window.SITE.phoneIntl = toIntl(s.value); }
+  });
+}
+async function loadData() {
+  if (!cfgOK()) return;               // কনফিগ না থাকলে data.js-এর ডেটা চলবে
+  try {
+    const [rows, sets] = await Promise.all([sbGet("tournaments?select=*&order=created_at.desc"), sbGet("settings?select=*")]);
+    window.TOURNAMENTS = rows.map(fromRow);
+    applySettings(sets);
+  } catch (e) { console.warn("ডেটাবেস থেকে ডেটা আনা যায়নি, লোকাল ডেটা ব্যবহার হচ্ছে", e); }
+}
+async function refreshLive() {
+  if (!cfgOK()) return;
+  try { applySettings(await sbGet("settings?select=*")); initPlayer(); } catch (e) {}
+}
+function applyContact() {
+  const S = window.SITE;
+  const fb = $("#cta-fb"), call = $("#cta-call");
+  if (fb) fb.href = S.facebook;
+  if (call) { call.href = "tel:" + S.phoneIntl; call.textContent = "📞 " + S.phone; }
+}
+
 /* ---------- Boot ---------- */
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   const page = document.body.dataset.page;
+  await loadData();
   renderChrome(page);
-  if (page === "home") { initPlayer(); renderNextMatch(); initTournamentList(6); }
+  if (page === "home") {
+    applyContact(); initPlayer(); renderNextMatch(); initTournamentList(6);
+    setInterval(refreshLive, 60000);   // লাইভ চালু/বন্ধ হলে ১ মিনিটের মধ্যে নিজে থেকে আপডেট
+  }
   if (page === "tournaments") initTournamentList(0);
   if (page === "detail") initDetail();
 });
