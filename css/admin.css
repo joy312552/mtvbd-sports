@@ -83,3 +83,17 @@ body.admin{background:#eef1f8;min-height:100vh}
   .row-grid .f,.row-grid .f.w3,.row-grid .f.w6,.row-grid .f.w1{grid-column:span 2}
   .row-grid .f.w1h{grid-column:span 1}
 }
+
+/* ফলাফল ট্যাব */
+.dt-warn{color:#a35a00;font-size:12.5px;font-weight:500}
+.rc-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.rc-head small{color:var(--muted);margin-left:auto}
+.rtag{font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;background:#e9edf8}
+.rtag.live{background:var(--red);color:#fff}
+.rtag.done{background:#e3f6ea;color:#12663a}
+.rc-score{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.rc-team{flex:1;font-weight:700;line-height:1.3;min-width:0}
+.rc-team.r{text-align:right}
+.rc-score input{width:64px;text-align:center;font:inherit;font-size:20px;font-weight:700;border:1px solid #d5dbec;border-radius:10px;padding:8px 4px;outline:none}
+.rc-score input:focus{border-color:var(--red);box-shadow:0 0 0 3px rgba(225,29,46,.12)}
+#rs-list{padding-bottom:10px}

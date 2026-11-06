@@ -90,6 +90,7 @@
     <nav class="adm-tabs">
       <button data-v="settings">📺 লাইভ ও সেটিংস</button>
       <button data-v="list">🏆 টুর্নামেন্ট</button>
+      <button data-v="results">🏁 ফলাফল</button>
       <a href="index.html" target="_blank" rel="noopener">🌐 ওয়েবসাইট দেখুন ↗</a>
     </nav>
     <main class="adm-main" id="view"></main>`;
@@ -101,7 +102,7 @@
   function setView(v) {
     view = v;
     $$(".adm-tabs [data-v]").forEach(b => b.classList.toggle("on", b.dataset.v === v));
-    if (v === "settings") renderSettings(); else renderList();
+    if (v === "settings") renderSettings(); else if (v === "results") renderResults(); else renderList();
   }
 
   /* ---------- settings ---------- */
@@ -210,17 +211,117 @@
     toast("টুর্নামেন্ট মুছে ফেলা হয়েছে"); renderList();
   }
 
+
+  /* ---------- 🏁 দ্রুত ফলাফল ---------- */
+  let resSel = "", resFilter = "pending", resQ = "";
+  async function renderResults() {
+    const el = $("#view");
+    el.innerHTML = `<div class="boot">লোড হচ্ছে…</div>`;
+    try { await loadTournaments(); } catch (e) { el.innerHTML = `<div class="warn">${esc(errText(e))}</div>`; return; }
+    const list = tournaments.filter(t => Array.isArray(t.fixtures) && t.fixtures.length);
+    if (!list.length) { el.innerHTML = `<div class="box2"><h3>🏁 ফলাফল</h3><p class="hint">কোনো টুর্নামেন্টে এখনো ফিক্সচার নেই। আগে "🏆 টুর্নামেন্ট" থেকে ফিক্সচার যোগ করুন।</p></div>`; return; }
+    if (!list.some(t => t.id === resSel)) resSel = (list.find(t => t.status !== "completed") || list[0]).id;
+    const t = list.find(x => x.id === resSel);
+    const fx = JSON.parse(JSON.stringify(t.fixtures));
+    const orig = JSON.stringify(fx);
+    el.innerHTML = `
+    <div class="list-head"><h2>🏁 ম্যাচের ফলাফল</h2></div>
+    <div class="box2"><p class="hint">ম্যাচ শেষে দুই দলের গোল/রান লিখে সেভ করুন — ফলাফল ওই টুর্নামেন্টের "ফলাফল" ট্যাবে আর হোমপেইজের "সম্পন্ন" তালিকায় চলে যাবে। শুধু নোট লিখলেও (যেমন "ম্যাচ ড্র") ম্যাচ সম্পন্ন হয়। স্কোর মুছে দিলে ম্যাচ আবার সময় অনুযায়ী চলবে।</p>
+      <div class="grid2"><label class="f"><span>টুর্নামেন্ট</span><select id="rs-t">${list.map(x => `<option value="${esc(x.id)}" ${x.id === resSel ? "selected" : ""}>${esc(x.title)}</option>`).join("")}</select></label>
+        <label class="f"><span>দেখান</span><select id="rs-f"><option value="pending" ${resFilter === "pending" ? "selected" : ""}>ফলাফল বাকি</option><option value="done" ${resFilter === "done" ? "selected" : ""}>ফলাফল দেওয়া হয়েছে</option><option value="all" ${resFilter === "all" ? "selected" : ""}>সব ম্যাচ</option></select></label></div>
+      <label class="f"><span>খুঁজুন (দলের নাম, রাউন্ড, তারিখ)</span><input id="rs-q" value="${esc(resQ)}" placeholder="যেমন: আল হেলাল"></label></div>
+    <div id="rs-list"></div>
+    <div class="savebar"><button class="btn" id="rs-save">💾 ফলাফল সেভ করুন</button></div>`;
+    const draw = () => {
+      const q = resQ.trim().toLowerCase();
+      const rows = fx.map((f, i) => ({ f, i })).filter(({ f }) => {
+        const has = MT.hasResult(f);
+        if (resFilter === "pending" && has) return false;
+        if (resFilter === "done" && !has) return false;
+        return !q || [f.home, f.away, f.round, f.no, f.date].join(" ").toLowerCase().includes(q);
+      });
+      $("#rs-list").innerHTML = rows.length ? rows.map(({ f, i }) => {
+        const info = MT.matchInfo(f, t.sport, Date.now());
+        const tag = info.status === "live" ? `<span class="rtag live">🔴 লাইভ</span>` : info.status === "completed" ? `<span class="rtag done">${info.hasRes ? "✅ ফলাফল আছে" : "⏱ সময় শেষ, ফলাফল বাকি"}</span>` : `<span class="rtag">আসন্ন</span>`;
+        return `<div class="row-card rc" data-i="${i}">
+          <div class="rc-head"><b>${esc([f.round, f.no].filter(Boolean).join(" • "))}</b> ${tag}<small>${esc([f.date && f.date.replace(/\s*\(.*\)/, ""), f.time].filter(Boolean).join(" • "))}</small></div>
+          <div class="rc-score"><span class="rc-team">${esc(f.home)}</span>
+            <input data-k="homeScore" value="${esc(f.homeScore ?? "")}" placeholder="০" inputmode="numeric" aria-label="${esc(f.home)} স্কোর">
+            <em>-</em>
+            <input data-k="awayScore" value="${esc(f.awayScore ?? "")}" placeholder="০" inputmode="numeric" aria-label="${esc(f.away)} স্কোর">
+            <span class="rc-team r">${esc(f.away)}</span></div>
+          <div class="row-grid"><label class="f w3"><span>নোট (ঐচ্ছিক)</span><input data-k="resultNote" value="${esc(f.resultNote ?? "")}" placeholder="টাইব্রেকারে জয় / ম্যাচ সেরা: ..."></label>
+            <label class="f w3"><span>▶ ম্যাচ দেখার লিংক (ঐচ্ছিক)</span><input data-k="watch" value="${esc(f.watch ?? "")}" placeholder="https://www.youtube.com/watch?v=..."></label></div></div>`;
+      }).join("") : `<div class="box2">এই তালিকায় কোনো ম্যাচ নেই।</div>`;
+    };
+    draw();
+    $("#rs-list").addEventListener("input", e => { const k = e.target.dataset.k, c = e.target.closest(".rc"); if (k && c) fx[+c.dataset.i][k] = e.target.value; });
+    $("#rs-t").addEventListener("change", e => { resSel = e.target.value; renderResults(); });
+    $("#rs-f").addEventListener("change", e => { resFilter = e.target.value; draw(); });
+    $("#rs-q").addEventListener("input", e => { resQ = e.target.value; draw(); });
+    $("#rs-save").addEventListener("click", async () => {
+      const KEYS = ["homeScore", "awayScore", "resultNote", "watch"];
+      const bad = fx.find(f => f.watch && !/^https?:\/\//i.test(String(f.watch).trim()));
+      if (bad) { toast("ম্যাচ দেখার লিংক http:// বা https:// দিয়ে শুরু হতে হবে", true); return; }
+      const changed = fx.map((f, i) => i).filter(i => KEYS.some(k => String(fx[i][k] ?? "").trim() !== String((JSON.parse(orig)[i] || {})[k] ?? "").trim()));
+      if (!changed.length) { toast("কোনো পরিবর্তন নেই"); return; }
+      const b = $("#rs-save"); busy(b, true, "সেভ হচ্ছে…");
+      try {
+        // সর্বশেষ ফিক্সচার নতুন করে এনে শুধু ফলাফলের ঘরগুলো বসানো হয়, যাতে অন্য কোনো তথ্য নষ্ট না হয়
+        const { data, error } = await sb.from("tournaments").select("fixtures").eq("id", t.id).single();
+        if (error) throw error;
+        const fresh = Array.isArray(data.fixtures) ? data.fixtures : [];
+        let n = 0;
+        changed.forEach(i => {
+          const a = fx[i], f = fresh[i];
+          if (!f || f.home !== a.home || f.away !== a.away) return;
+          KEYS.forEach(k => { const v = String(a[k] ?? "").trim(); if (v) f[k] = v; else delete f[k]; });
+          n++;
+        });
+        if (n !== changed.length) throw new Error("ফিক্সচার ইতিমধ্যে বদলে গেছে। পেইজ রিফ্রেশ করে আবার চেষ্টা করুন।");
+        const up = await sb.from("tournaments").update({ fixtures: fresh }).eq("id", t.id);
+        if (up.error) throw up.error;
+        toast(`✅ ${n}টি ম্যাচের ফলাফল সেভ হয়েছে`);
+        renderResults();
+      } catch (e) { toast("সেভ হয়নি: " + errText(e), true); }
+      busy(b, false);
+    });
+  }
+
   /* ---------- repeatable rows ---------- */
+  const warnHTML = it => (it.date || it.time) && !(MT.parseDate(it.date) && MT.parseTime(it.time))
+    ? `<small class="dt-warn">⚠ তারিখ/সময় বোঝা যায়নি — ম্যাচ নিজে থেকে লাইভ হবে না। ওপরের পিকার ব্যবহার করুন।</small>` : "";
   function listEditor(host, items, schema, addLabel) {
     function draw() {
       host.innerHTML = items.map((it, i) => `<div class="row-card">
         <div class="row-actions"><button type="button" data-up="${i}">↑</button><button type="button" data-down="${i}">↓</button><button type="button" data-del="${i}">🗑 মুছুন</button></div>
         <div class="row-grid">${schema.map(f => `<label class="f ${f.w || ""}"><span>${f.label}</span>${f.type === "textarea"
           ? `<textarea data-i="${i}" data-k="${f.k}" placeholder="${esc(f.ph || "")}">${esc(it[f.k] ?? "")}</textarea>`
+          : f.type === "select"
+          ? `<select data-i="${i}" data-k="${f.k}">${f.opts.map(([v, l]) => `<option value="${v}" ${(it[f.k] || "") === v ? "selected" : ""}>${l}</option>`).join("")}</select>`
+          : f.type === "picker"
+          ? `<input type="datetime-local" data-i="${i}" data-k="_pick" value="${MT.toPicker(it.date, it.time)}">${warnHTML(it)}`
           : `<input data-i="${i}" data-k="${f.k}" value="${esc(it[f.k] ?? "")}" placeholder="${esc(f.ph || "")}">`}</label>`).join("")}</div></div>`).join("")
         + `<button type="button" class="btn small ghost" data-add>+ ${addLabel}</button>`;
     }
-    host.addEventListener("input", e => { const d = e.target.dataset; if (d.k != null) items[+d.i][d.k] = e.target.value; });
+    host.addEventListener("input", e => {
+      const d = e.target.dataset; if (d.k == null) return;
+      const it = items[+d.i];
+      if (d.k === "_pick") {                       // পিকার থেকে বাংলা তারিখ-সময় নিজে বসে যায়
+        const r = MT.fromPicker(e.target.value); if (!r) return;
+        it.date = r.date; it.time = r.time;
+        const card = e.target.closest(".row-card");
+        $('[data-k="date"]', card).value = r.date; $('[data-k="time"]', card).value = r.time;
+        const w = $(".dt-warn", card); if (w) w.remove();
+        return;
+      }
+      it[d.k] = e.target.value;
+      if (d.k === "date" || d.k === "time") {       // হাতে লিখলে বোঝা না গেলে সতর্কবার্তা
+        const lab = e.target.closest(".row-card").querySelector('[data-k="_pick"]').parentNode, old = $(".dt-warn", lab);
+        if (old) old.remove();
+        lab.insertAdjacentHTML("beforeend", warnHTML(it));
+      }
+    });
     host.addEventListener("click", e => {
       const b = e.target.closest("button"); if (!b) return;
       if (b.hasAttribute("data-add")) items.push(Object.fromEntries(schema.filter(f => f.def).map(f => [f.k, f.def()])));
@@ -234,19 +335,22 @@
   }
   /* খালি সারি বাদ দেয়। ডিফল্ট লিংক (def) আগে থেকে বসানো থাকে, তাই শুধু সেটা থাকলে সারিটিকে খালি ধরা হয়। */
   const cleanRows = (arr, schema) => arr
-    .map(o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, String(v ?? "").trim()]).filter(([, v]) => v !== "")))
+    .map(o => Object.fromEntries(Object.entries(o).filter(([k]) => k[0] !== "_").map(([k, v]) => [k, String(v ?? "").trim()]).filter(([, v]) => v !== "")))
     .filter(o => schema.some(f => !f.def && o[f.k]));
 
   const SCHEMAS = {
     fixtures: [
       { k: "round", label: "রাউন্ড / গ্রুপ (একই নামের ম্যাচ একসাথে দেখাবে)", ph: "প্রথম রাউন্ড / গ্রুপ ‘এ’", w: "w3" },
       { k: "no", label: "ম্যাচ নং", ph: "ম্যাচ ০১", w: "w3" },
+      { k: "_pick", type: "picker", label: "📅 তারিখ ও সময় বেছে নিন (সহজ উপায় — নিচের তারিখ/সময় নিজে বসে যাবে)", w: "w6" },
       { k: "date", label: "তারিখ", ph: "৬ নভেম্বর, ২০২৬ (শুক্রবার)", w: "w3" },
       { k: "time", label: "সময়", ph: "দুপুর ২:৪৫ টা", w: "w3" },
       { k: "home", label: "প্রথম দল", ph: "আল হেলাল এসি", w: "w3" },
       { k: "away", label: "দ্বিতীয় দল", ph: "পাঁচবাগ স্পোর্টিং ক্লাব", w: "w3" },
       { k: "venue", label: "ভেন্যু / মাঠ", ph: "ময়মনসিংহ জেলা স্টেডিয়াম", w: "w6" },
       { k: "video", label: "▶ ভিডিও বাটনের লিংক (ম্যাচের লাইভ/ভিডিও লিংক বসান; না বদলালে চ্যানেলে যাবে)", ph: "https://www.youtube.com/watch?v=...", w: "w6", def: () => ytChannel },
+      { k: "state", type: "select", label: "ম্যাচের অবস্থা", opts: [["", "স্বয়ংক্রিয় (সময় দেখে)"], ["live", "🔴 এখনই লাইভ দেখান"], ["postponed", "⏸ স্থগিত"]], w: "w3" },
+      { k: "dur", label: "ম্যাচ চলার সময় (মিনিট, ঐচ্ছিক)", ph: "ফুটবল ১২০, ক্রিকেট ৪৮০", w: "w3" },
       { k: "note", label: "রাউন্ডের নোট (ঐচ্ছিক, যেমন: এই রাউন্ডে অফ: ...)", w: "w6" }
     ],
     results: [
@@ -320,8 +424,8 @@
       <div class="box2"><h3>সারসংক্ষেপ — "প্রতিযোগিতা সম্পর্কে"</h3><p class="hint">প্রতিটি অনুচ্ছেদ আলাদা লাইনে লিখুন।</p>
         <label class="f"><textarea name="overview" style="min-height:150px">${esc(d.overview)}</textarea></label></div>
 
-      <div class="box2"><h3>ফিক্সচার</h3><p class="hint">আসন্ন ম্যাচের তালিকা। তারিখ "৬ নভেম্বর, ২০২৬" এই ধরনে লিখলে হোমপেইজের "পরবর্তী ম্যাচ" কার্ডে আজকের পরের সবচেয়ে কাছের ম্যাচ নিজে থেকে দেখাবে। রাউন্ড/গ্রুপের নাম একই হলে ম্যাচগুলো একসাথে দেখাবে।</p><div id="fx"></div></div>
-      <div class="box2"><h3>ফলাফল</h3><p class="hint">ম্যাচ শেষ হলে এখানে ফলাফল যোগ করুন। "লাইভ ম্যাচ লিংক" দিলে দর্শক ফলাফলের নিচের "▶ ম্যাচ দেখুন" বাটনে ক্লিক করে ম্যাচটি দেখতে পারবে।</p><div id="rs"></div></div>
+      <div class="box2"><h3>ফিক্সচার</h3><p class="hint">আসন্ন ম্যাচের তালিকা। তারিখ-সময় দিলে হোমপেইজের "ম্যাচ" অংশে ম্যাচটি নিজে থেকে আসন্ন → 🔴 লাইভ (শুরুর সময় হলে) → সম্পন্ন হয়ে যাবে। ফলাফল দিতে ওপরের "🏁 ফলাফল" ট্যাব ব্যবহার করুন। রাউন্ড/গ্রুপের নাম একই হলে ম্যাচগুলো একসাথে দেখাবে।</p><div id="fx"></div></div>
+      <div class="box2"><h3>ফলাফল</h3><p class="hint">নতুন ফলাফল সহজে দিতে ওপরের "🏁 ফলাফল" ট্যাব ব্যবহার করুন (ফিক্সচারের ম্যাচেই স্কোর বসে)। এই বক্সটি শুধু আলাদা/পুরোনো ফলাফলের জন্য। ম্যাচ শেষ হলে এখানে ফলাফল যোগ করা যায়। "লাইভ ম্যাচ লিংক" দিলে দর্শক ফলাফলের নিচের "▶ ম্যাচ দেখুন" বাটনে ক্লিক করে ম্যাচটি দেখতে পারবে।</p><div id="rs"></div></div>
       <div class="box2"><h3>দল</h3><p class="hint">প্রতিটি দলের নাম আলাদা লাইনে লিখুন। গ্রুপ থাকলে আলাদা লাইনে <b># গ্রুপ ‘এ’</b> লিখে তার নিচে সেই গ্রুপের দলগুলো দিন।</p>
         <label class="f"><textarea name="teams" style="min-height:140px" placeholder="আল হেলাল এসি&#10;পাঁচবাগ স্পোর্টিং ক্লাব">${esc((d.teams || []).join("\n"))}</textarea></label></div>
       <div class="box2"><h3>নিউজ</h3><div id="nw"></div></div>

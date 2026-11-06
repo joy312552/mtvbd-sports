@@ -215,3 +215,50 @@ section{padding:46px 0}
 .yt-bell{position:absolute;right:14px;bottom:10px;font-size:24px;transform-origin:top center;animation:bell 2.4s infinite}
 @keyframes bell{0%,60%,100%{transform:rotate(0)}65%{transform:rotate(14deg)}70%{transform:rotate(-12deg)}75%{transform:rotate(10deg)}80%{transform:rotate(-8deg)}85%{transform:rotate(0)}}
 @media(max-width:900px){.yt{grid-template-columns:1fr;padding:32px 22px}.yt-visual{order:-1}}
+
+/* ---------- ম্যাচ প্যানেল (হোম) ---------- */
+.matches-panel{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;box-shadow:0 8px 24px rgba(10,15,36,.06);min-width:0}
+.mp-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.mp-head h3{font-size:20px}
+.mp-sub{font-size:12px;color:var(--muted)}
+.mp-tabs{display:flex;gap:6px;margin-bottom:10px}
+.mp-tab{flex:1;border:1px solid var(--line);background:#f3f5fb;border-radius:10px;padding:8px 6px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;color:var(--text);display:flex;gap:6px;justify-content:center;align-items:center}
+.mp-tab b{background:#dfe4f4;border-radius:999px;font-size:12px;padding:1px 7px}
+.mp-tab.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.mp-tab.on b{background:rgba(255,255,255,.2)}
+.mp-tab.has:not(.on){border-color:var(--red);color:var(--red)}
+.mp-list{display:flex;flex-direction:column;gap:8px;max-height:420px;overflow:auto;padding-right:2px}
+.mp-item{display:block;border:1px solid var(--line);border-radius:12px;padding:10px 12px;text-decoration:none;color:inherit;background:#fafbff;transition:.2s}
+.mp-item:hover{border-color:var(--red);transform:translateY(-1px)}
+.mp-item.live{border-color:var(--red);background:#fff5f6}
+.mp-top{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:6px}
+.mp-t{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mp-badge{font-size:11.5px;font-weight:700;border-radius:999px;padding:2px 9px;background:#e9edf8;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+.mp-badge.live,.mpill.live{background:var(--red);color:#fff}
+.mp-badge.soon{background:#fff0d6;color:#8a5a00}
+.mp-badge.hold,.mpill.hold{background:#eee;color:#555}
+.mp-badge i,.mpill i{width:7px;height:7px;border-radius:50%;background:#fff;animation:pulse 1.2s infinite}
+.mp-row{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14.5px}
+.mp-team{flex:1;min-width:0;line-height:1.3}
+.mp-team:last-child{text-align:right}
+.mp-mid{background:var(--navy);color:#fff;border-radius:8px;padding:2px 9px;font-size:13px;white-space:nowrap}
+.mp-meta{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
+.mp-watch{margin-top:6px;font-size:12.5px;font-weight:700;color:var(--red)}
+.mp-empty{text-align:center;color:var(--muted);padding:26px 8px;font-size:14px}
+.mp-empty button{margin-top:8px;border:0;background:none;color:var(--red);font:inherit;font-weight:700;cursor:pointer}
+.mp-foot{text-align:center;margin-top:10px;font-size:14px;font-weight:600}
+.mp-foot a{color:var(--red);text-decoration:none}
+/* ম্যাচ কার্ডের নতুন অংশ */
+.match .mtop{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.mpill{font-size:11.5px;font-weight:700;border-radius:999px;padding:2px 9px;background:#e9edf8;display:inline-flex;align-items:center;gap:5px}
+.mpill.done{background:#e3f6ea;color:#12663a}
+.match.live{border-color:var(--red);box-shadow:0 0 0 2px rgba(225,29,46,.15)}
+.match.hl{outline:3px solid var(--red);animation:hlfade 3s 1 forwards}
+@keyframes hlfade{to{outline-color:transparent}}
+.vbtn.livebtn{background:var(--red);color:#fff}
+.matches-panel{color:var(--text)}
+.matches-panel h3,.matches-panel .mp-team,.matches-panel .mp-row{color:var(--text)}
+.matches-panel .mp-mid{color:#fff}
+.matches-panel .mp-tab{color:var(--text)}
+.matches-panel .mp-tab.on{color:#fff}
+.matches-panel .mp-badge.live{color:#fff}
