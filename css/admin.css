@@ -80,6 +80,6 @@ body.admin{background:#eef1f8;min-height:100vh}
 @media(max-width:700px){
   .grid2{grid-template-columns:1fr}
   .row-grid{grid-template-columns:1fr 1fr}
-  .row-grid .f,.row-grid .f.w3,.row-grid .f.w1{grid-column:span 2}
+  .row-grid .f,.row-grid .f.w3,.row-grid .f.w6,.row-grid .f.w1{grid-column:span 2}
   .row-grid .f.w1h{grid-column:span 1}
 }

@@ -169,3 +169,49 @@ section{padding:46px 0}
   section{padding:34px 0}
   .brand-name{font-size:18px}
 }
+
+/* ---------- ফিক্সচার/ফলাফল বাটন, গ্রুপ, নিউজ লিংক ---------- */
+.vbtn{display:inline-flex;align-items:center;gap:6px;background:var(--red);color:#fff;font-weight:700;font-size:13.5px;padding:7px 16px;border-radius:999px;transition:.2s}
+.vbtn:hover{background:#c4111f;transform:translateY(-1px)}
+.match-act{display:flex;justify-content:center;margin-top:12px}
+.round-group{margin-bottom:26px}
+.round-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:22px 0 10px;padding-left:12px;border-left:4px solid var(--red)}
+.round-head h3{font-size:20px}
+.rcount{color:var(--muted);font-size:13.5px;font-weight:600}
+.round-note{background:#fff6e0;border:1px solid #f3d27a;color:#6b4a00;border-radius:10px;padding:8px 12px;font-size:14px;margin-bottom:12px}
+.team-group{font-size:19px;margin:22px 0 12px;padding-left:12px;border-left:4px solid var(--red)}
+.news-item .more{display:inline-block;margin-top:6px;color:var(--red);font-weight:700}
+.news-item .more:hover{text-decoration:underline}
+
+/* ---------- ইউটিউব সেকশন ---------- */
+.yt{position:relative;overflow:hidden;border-radius:24px;background:linear-gradient(135deg,#1a0508 0%,#2a0a10 45%,#0a0f24 100%);color:#fff;display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:30px;align-items:center;padding:46px 40px;border:1px solid rgba(255,255,255,.08);box-shadow:var(--shadow)}
+.yt::before{content:"";position:absolute;width:540px;height:540px;right:-150px;top:-200px;background:radial-gradient(circle,rgba(255,0,0,.38),transparent 65%);pointer-events:none}
+.yt::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(115deg,rgba(255,255,255,.03) 0 2px,transparent 2px 26px);pointer-events:none}
+.yt>*{position:relative;z-index:1}
+.yt-kicker{display:inline-flex;align-items:center;gap:10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);padding:5px 14px 5px 8px;border-radius:999px;font-weight:700;font-size:13px;letter-spacing:1px}
+.yt-kicker b{width:24px;height:17px;background:#f00;border-radius:5px;position:relative;display:inline-block}
+.yt-kicker b::after{content:"";position:absolute;left:9px;top:4px;border-left:7px solid #fff;border-top:4.5px solid transparent;border-bottom:4.5px solid transparent}
+.yt h2{font-size:clamp(26px,4.5vw,40px);line-height:1.25;margin:14px 0 10px}
+.yt h2 em{font-style:normal;color:#ff5a5a}
+.yt .lead{color:#d0d5ec;margin-bottom:18px;max-width:560px}
+.yt-points{list-style:none;display:grid;gap:9px;margin:0 0 26px;padding:0;color:#e7eafb}
+.yt-points li{display:flex;gap:10px;align-items:flex-start}
+.yt-points li::before{content:"✓";flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:rgba(255,90,90,.2);color:#ff7a7a;display:grid;place-items:center;font-size:13px;font-weight:700;margin-top:2px}
+.yt-actions{display:flex;gap:12px;flex-wrap:wrap}
+.btn.yt-sub{background:#f00;box-shadow:0 10px 26px rgba(255,0,0,.4)}
+.btn.yt-sub:hover{background:#cc0000}
+.btn.outline{background:transparent;border:1.5px solid rgba(255,255,255,.35)}
+.btn.outline:hover{background:rgba(255,255,255,.1)}
+.yt-visual{display:grid;place-items:center}
+.yt-screen{position:relative;width:100%;max-width:430px;aspect-ratio:16/9;border-radius:18px;background:linear-gradient(135deg,#0b6b3a,#0a2f6b 60%,#1b0a12);border:1px solid rgba(255,255,255,.18);box-shadow:0 24px 60px rgba(0,0,0,.55);display:grid;place-items:center;overflow:hidden;transform:rotate(-2deg);transition:.3s}
+.yt-screen:hover{transform:rotate(0) scale(1.02)}
+.yt-screen::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(115deg,rgba(255,255,255,.07) 0 2px,transparent 2px 22px)}
+.yt-play{position:relative;width:80px;height:56px;background:#f00;border-radius:16px;display:grid;place-items:center;box-shadow:0 10px 30px rgba(255,0,0,.55)}
+.yt-play::after{content:"";border-left:20px solid #fff;border-top:12px solid transparent;border-bottom:12px solid transparent;margin-left:5px}
+.yt-play::before{content:"";position:absolute;inset:-8px;border-radius:24px;border:2px solid rgba(255,0,0,.65);animation:ytring 1.8s infinite}
+@keyframes ytring{0%{transform:scale(.92);opacity:.9}100%{transform:scale(1.5);opacity:0}}
+.yt-live{position:absolute;top:12px;left:12px}
+.yt-handle{position:absolute;left:14px;bottom:12px;font-weight:700;font-size:14px;background:rgba(0,0,0,.55);padding:4px 12px;border-radius:999px}
+.yt-bell{position:absolute;right:14px;bottom:10px;font-size:24px;transform-origin:top center;animation:bell 2.4s infinite}
+@keyframes bell{0%,60%,100%{transform:rotate(0)}65%{transform:rotate(14deg)}70%{transform:rotate(-12deg)}75%{transform:rotate(10deg)}80%{transform:rotate(-8deg)}85%{transform:rotate(0)}}
+@media(max-width:900px){.yt{grid-template-columns:1fr;padding:32px 22px}.yt-visual{order:-1}}

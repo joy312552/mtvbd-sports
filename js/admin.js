@@ -11,6 +11,16 @@
   const configured = C.SUPABASE_URL && C.SUPABASE_ANON_KEY && !/YOUR_/.test(C.SUPABASE_URL + C.SUPABASE_ANON_KEY);
   let sb = null, user = null, tournaments = [], view = "settings";
 
+  /* ইউটিউব চ্যানেলের লিংক — নতুন ফিক্সচার/ফলাফল সারিতে ডিফল্ট হিসেবে বসে (সেটিংস থেকে বদলানো যায়) */
+  const DEFAULT_YT = "https://www.youtube.com/@mymensinghtvbd24";
+  let ytChannel = DEFAULT_YT;
+  async function loadChannel() {
+    try {
+      const { data } = await sb.from("settings").select("value").eq("key", "youtube").maybeSingle();
+      if (data && /^https?:\/\//i.test(data.value || "")) ytChannel = data.value.trim();
+    } catch (e) {}
+  }
+
   /* ---------- helpers ---------- */
   let toastTimer;
   function toast(msg, bad) {
@@ -84,6 +94,7 @@
     </nav>
     <main class="adm-main" id="view"></main>`;
     $("#logout").addEventListener("click", () => sb.auth.signOut());
+    loadChannel();
     $$(".adm-tabs [data-v]").forEach(b => b.addEventListener("click", () => setView(b.dataset.v)));
     setView(view === "edit" ? "list" : view);
   }
@@ -110,8 +121,10 @@
         <button class="btn" id="live-save">💾 লাইভ চালু / সেভ করুন</button>
         <button class="btn danger" id="live-off">⏹ লাইভ বন্ধ করুন</button>
       </div></div>
-    <div class="box2"><h3>📞 যোগাযোগের তথ্য</h3>
-      <p class="hint">হোমপেইজের "আপনার টুর্নামেন্ট লাইভ স্ট্রিমিং করতে চান?" সেকশন ও ফুটারে এই তথ্য দেখাবে।</p>
+    <div class="box2"><h3>📞 যোগাযোগ ও সোশ্যাল লিংক</h3>
+      <p class="hint">হোমপেইজের ইউটিউব সেকশন, "আপনার টুর্নামেন্ট লাইভ স্ট্রিমিং করতে চান?" সেকশন ও ফুটারে এই তথ্য দেখাবে। ইউটিউব চ্যানেলের লিংক ফিক্সচারের "ভিডিও" ও ফলাফলের "ম্যাচ দেখুন" বাটনের ডিফল্ট লিংকও।</p>
+      <label class="f"><span>ইউটিউব চ্যানেলের লিংক</span><input id="yt" value="${esc(S.youtube || DEFAULT_YT)}" placeholder="${DEFAULT_YT}"></label>
+      <div class="err" id="yt-err"></div>
       <label class="f"><span>ফেসবুক পেইজের লিংক</span><input id="fb" value="${esc(S.facebook || "")}"></label>
       <label class="f"><span>মোবাইল নম্বর</span><input id="ph" value="${esc(S.phone || "")}" inputmode="tel"></label>
       <button class="btn" id="contact-save">💾 সেভ করুন</button></div>
@@ -143,8 +156,13 @@
       $("#live").value = ""; prev(); $("#live-err").textContent = "";
       saveSettings([{ key: "live_url", value: "" }], e.target, "লাইভ বন্ধ করা হয়েছে");
     });
-    $("#contact-save").addEventListener("click", e =>
-      saveSettings([{ key: "facebook", value: $("#fb").value.trim() }, { key: "phone", value: $("#ph").value.trim() }], e.target, "✅ যোগাযোগের তথ্য সেভ হয়েছে"));
+    $("#contact-save").addEventListener("click", async e => {
+      const y = $("#yt").value.trim() || DEFAULT_YT;
+      if (!/^https?:\/\//i.test(y)) { $("#yt-err").textContent = "ইউটিউব লিংক http:// বা https:// দিয়ে শুরু হতে হবে।"; return; }
+      $("#yt-err").textContent = "";
+      await saveSettings([{ key: "youtube", value: y }, { key: "facebook", value: $("#fb").value.trim() }, { key: "phone", value: $("#ph").value.trim() }], e.target, "✅ তথ্য সেভ হয়েছে");
+      ytChannel = y; $("#yt").value = y;
+    });
     $("#pw-save").addEventListener("click", async e => {
       const p = $("#np").value;
       if (p.length < 8) { toast("পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে", true); return; }
@@ -205,7 +223,7 @@
     host.addEventListener("input", e => { const d = e.target.dataset; if (d.k != null) items[+d.i][d.k] = e.target.value; });
     host.addEventListener("click", e => {
       const b = e.target.closest("button"); if (!b) return;
-      if (b.hasAttribute("data-add")) items.push({});
+      if (b.hasAttribute("data-add")) items.push(Object.fromEntries(schema.filter(f => f.def).map(f => [f.k, f.def()])));
       else if (b.dataset.del != null) items.splice(+b.dataset.del, 1);
       else if (b.dataset.up != null) { const i = +b.dataset.up; if (i > 0) [items[i - 1], items[i]] = [items[i], items[i - 1]]; }
       else if (b.dataset.down != null) { const i = +b.dataset.down; if (i < items.length - 1) [items[i + 1], items[i]] = [items[i], items[i + 1]]; }
@@ -214,16 +232,22 @@
     });
     draw();
   }
-  const cleanRows = arr => arr.map(o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, String(v ?? "").trim()]).filter(([, v]) => v !== ""))).filter(o => Object.keys(o).length);
+  /* খালি সারি বাদ দেয়। ডিফল্ট লিংক (def) আগে থেকে বসানো থাকে, তাই শুধু সেটা থাকলে সারিটিকে খালি ধরা হয়। */
+  const cleanRows = (arr, schema) => arr
+    .map(o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, String(v ?? "").trim()]).filter(([, v]) => v !== "")))
+    .filter(o => schema.some(f => !f.def && o[f.k]));
 
   const SCHEMAS = {
     fixtures: [
-      { k: "round", label: "রাউন্ড / ম্যাচের নাম", ph: "উদ্বোধনী ম্যাচ", w: "" },
-      { k: "date", label: "তারিখ", ph: "৬ নভেম্বর, ২০২৬ (শুক্রবার)", w: "" },
-      { k: "time", label: "সময়", ph: "দুপুর ২:৪৫", w: "" },
+      { k: "round", label: "রাউন্ড / গ্রুপ (একই নামের ম্যাচ একসাথে দেখাবে)", ph: "প্রথম রাউন্ড / গ্রুপ ‘এ’", w: "w3" },
+      { k: "no", label: "ম্যাচ নং", ph: "ম্যাচ ০১", w: "w3" },
+      { k: "date", label: "তারিখ", ph: "৬ নভেম্বর, ২০২৬ (শুক্রবার)", w: "w3" },
+      { k: "time", label: "সময়", ph: "দুপুর ২:৪৫ টা", w: "w3" },
       { k: "home", label: "প্রথম দল", ph: "আল হেলাল এসি", w: "w3" },
       { k: "away", label: "দ্বিতীয় দল", ph: "পাঁচবাগ স্পোর্টিং ক্লাব", w: "w3" },
-      { k: "venue", label: "ভেন্যু", ph: "ময়মনসিংহ জেলা স্টেডিয়াম", w: "w6" }
+      { k: "venue", label: "ভেন্যু / মাঠ", ph: "ময়মনসিংহ জেলা স্টেডিয়াম", w: "w6" },
+      { k: "video", label: "▶ ভিডিও বাটনের লিংক (ম্যাচের লাইভ/ভিডিও লিংক বসান; না বদলালে চ্যানেলে যাবে)", ph: "https://www.youtube.com/watch?v=...", w: "w6", def: () => ytChannel },
+      { k: "note", label: "রাউন্ডের নোট (ঐচ্ছিক, যেমন: এই রাউন্ডে অফ: ...)", w: "w6" }
     ],
     results: [
       { k: "round", label: "রাউন্ড / ম্যাচের নাম", ph: "উদ্বোধনী ম্যাচ", w: "w3" },
@@ -232,12 +256,14 @@
       { k: "homeScore", label: "গোল/রান", ph: "২", w: "w1 w1h" },
       { k: "awayScore", label: "গোল/রান", ph: "১", w: "w1 w1h" },
       { k: "away", label: "দ্বিতীয় দল", w: "w2" },
-      { k: "note", label: "নোট (ঐচ্ছিক)", ph: "টাইব্রেকারে জয় / ম্যাচ সেরা: ...", w: "w6" }
+      { k: "note", label: "নোট (ঐচ্ছিক)", ph: "টাইব্রেকারে জয় / ম্যাচ সেরা: ...", w: "w6" },
+      { k: "watch", label: "▶ লাইভ ম্যাচ লিংক (দর্শক \"ম্যাচ দেখুন\" চাপলে এখানে যাবে; না বদলালে চ্যানেলে যাবে)", ph: "https://www.youtube.com/watch?v=...", w: "w6", def: () => ytChannel }
     ],
     news: [
       { k: "title", label: "শিরোনাম", w: "w6" },
       { k: "date", label: "তারিখ", ph: "৩ নভেম্বর, ২০২৬", w: "w3" },
-      { k: "text", label: "বিস্তারিত", type: "textarea", w: "w6" }
+      { k: "text", label: "বিস্তারিত", type: "textarea", w: "w6" },
+      { k: "link", label: "বিস্তারিত নিউজের লিংক (ঐচ্ছিক — দিলে \"আরও পড়ুন\" বাটন আসবে ও নতুন ট্যাবে খুলবে)", ph: "https://...", w: "w6" }
     ],
     awards: [
       { k: "title", label: "পুরস্কারের নাম", ph: "চ্যাম্পিয়ন / ম্যান অব দ্য ম্যাচ", w: "w3" },
@@ -294,9 +320,9 @@
       <div class="box2"><h3>সারসংক্ষেপ — "প্রতিযোগিতা সম্পর্কে"</h3><p class="hint">প্রতিটি অনুচ্ছেদ আলাদা লাইনে লিখুন।</p>
         <label class="f"><textarea name="overview" style="min-height:150px">${esc(d.overview)}</textarea></label></div>
 
-      <div class="box2"><h3>ফিক্সচার</h3><p class="hint">আসন্ন ম্যাচের তালিকা। হোমপেইজের "পরবর্তী ম্যাচ" কার্ডে প্রথম ম্যাচটি দেখায় — ↑ ↓ দিয়ে সাজান।</p><div id="fx"></div></div>
-      <div class="box2"><h3>ফলাফল</h3><p class="hint">ম্যাচ শেষ হলে এখানে ফলাফল যোগ করুন।</p><div id="rs"></div></div>
-      <div class="box2"><h3>দল</h3><p class="hint">প্রতিটি দলের নাম আলাদা লাইনে লিখুন।</p>
+      <div class="box2"><h3>ফিক্সচার</h3><p class="hint">আসন্ন ম্যাচের তালিকা। তারিখ "৬ নভেম্বর, ২০২৬" এই ধরনে লিখলে হোমপেইজের "পরবর্তী ম্যাচ" কার্ডে আজকের পরের সবচেয়ে কাছের ম্যাচ নিজে থেকে দেখাবে। রাউন্ড/গ্রুপের নাম একই হলে ম্যাচগুলো একসাথে দেখাবে।</p><div id="fx"></div></div>
+      <div class="box2"><h3>ফলাফল</h3><p class="hint">ম্যাচ শেষ হলে এখানে ফলাফল যোগ করুন। "লাইভ ম্যাচ লিংক" দিলে দর্শক ফলাফলের নিচের "▶ ম্যাচ দেখুন" বাটনে ক্লিক করে ম্যাচটি দেখতে পারবে।</p><div id="rs"></div></div>
+      <div class="box2"><h3>দল</h3><p class="hint">প্রতিটি দলের নাম আলাদা লাইনে লিখুন। গ্রুপ থাকলে আলাদা লাইনে <b># গ্রুপ ‘এ’</b> লিখে তার নিচে সেই গ্রুপের দলগুলো দিন।</p>
         <label class="f"><textarea name="teams" style="min-height:140px" placeholder="আল হেলাল এসি&#10;পাঁচবাগ স্পোর্টিং ক্লাব">${esc((d.teams || []).join("\n"))}</textarea></label></div>
       <div class="box2"><h3>নিউজ</h3><div id="nw"></div></div>
       <div class="box2"><h3>পুরস্কার</h3><div id="aw"></div></div>
@@ -336,11 +362,15 @@
       e.preventDefault();
       const fd = new FormData(e.target), g = k => (fd.get(k) || "").toString().trim();
       if (!g("title")) { toast("টুর্নামেন্টের নাম দিন", true); return; }
+      const bad = [["video", d.fixtures, "ফিক্সচারের ভিডিও"], ["watch", d.results, "ফলাফলের লাইভ ম্যাচ"], ["link", d.news, "নিউজের"]]
+        .find(([k, rows]) => rows.some(r => String(r[k] || "").trim() && !/^https?:\/\//i.test(String(r[k]).trim())));
+      if (bad) { toast(`${bad[2]} লিংক http:// বা https:// দিয়ে শুরু হতে হবে`, true); return; }
       const row = {
         id: d.id, title: g("title"), sport: g("sport") || "ফুটবল", status: g("status"), image: g("image"), short: g("short"),
         organizer: g("organizer"), venue: g("venue"), district: g("district"), format: g("format"),
         start_date: g("start_date"), end_date: g("end_date"), teams_count: g("teams_count"), overview: g("overview"),
-        fixtures: cleanRows(d.fixtures), results: cleanRows(d.results), news: cleanRows(d.news), awards: cleanRows(d.awards),
+        fixtures: cleanRows(d.fixtures, SCHEMAS.fixtures), results: cleanRows(d.results, SCHEMAS.results),
+        news: cleanRows(d.news, SCHEMAS.news), awards: cleanRows(d.awards, SCHEMAS.awards),
         teams: g("teams").split(/\n/).map(s => s.trim()).filter(Boolean)
       };
       const b = $("#save"); busy(b, true, "সেভ হচ্ছে…");

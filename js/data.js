@@ -7,6 +7,7 @@ window.SITE = {
   name: "MTVBD SPORTS",
   tagline: "MYMENSINGH TV BD",
   facebook: "https://www.facebook.com/mymensinghtvbd24",
+  youtube: "https://www.youtube.com/@mymensinghtvbd24",
   phone: "01711615560",
   phoneIntl: "+8801711615560",
 
