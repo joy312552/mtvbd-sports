@@ -91,7 +91,8 @@
       <button data-v="settings">📺 লাইভ ও সেটিংস</button>
       <button data-v="list">🏆 টুর্নামেন্ট</button>
       <button data-v="results">🏁 ফলাফল</button>
-      <a href="index.html" target="_blank" rel="noopener">🌐 ওয়েবসাইট দেখুন ↗</a>
+      <button data-v="seo">🔎 SEO ও গুগল</button>
+      <a href="/" target="_blank" rel="noopener">🌐 ওয়েবসাইট দেখুন ↗</a>
     </nav>
     <main class="adm-main" id="view"></main>`;
     $("#logout").addEventListener("click", () => sb.auth.signOut());
@@ -102,7 +103,7 @@
   function setView(v) {
     view = v;
     $$(".adm-tabs [data-v]").forEach(b => b.classList.toggle("on", b.dataset.v === v));
-    if (v === "settings") renderSettings(); else if (v === "results") renderResults(); else renderList();
+    if (v === "settings") renderSettings(); else if (v === "results") renderResults(); else if (v === "seo") renderSeo(); else renderList();
   }
 
   /* ---------- settings ---------- */
@@ -123,7 +124,7 @@
         <button class="btn danger" id="live-off">⏹ লাইভ বন্ধ করুন</button>
       </div></div>
     <div class="box2"><h3>📞 যোগাযোগ ও সোশ্যাল লিংক</h3>
-      <p class="hint">হোমপেইজের ইউটিউব সেকশন, "আপনার টুর্নামেন্ট লাইভ স্ট্রিমিং করতে চান?" সেকশন ও ফুটারে এই তথ্য দেখাবে। ইউটিউব চ্যানেলের লিংক ফিক্সচারের "ভিডিও" ও ফলাফলের "ম্যাচ দেখুন" বাটনের ডিফল্ট লিংকও।</p>
+      <p class="hint">হোমপেইজের ইউটিউব সেকশন, "আপনার টুর্নামেন্ট লাইভ স্ট্রিমিং করতে চান?" সেকশন ও ফুটারে এই তথ্য ব্যবহার হবে। মোবাইল নম্বর সাইটে সরাসরি দেখানো হয় না — শুধু "📞 কল করুন" বাটনে চাপলে ডায়াল হয়। ইউটিউব চ্যানেলের লিংক ফিক্সচারের "ভিডিও" ও ফলাফলের "ম্যাচ দেখুন" বাটনের ডিফল্ট লিংকও।</p>
       <label class="f"><span>ইউটিউব চ্যানেলের লিংক</span><input id="yt" value="${esc(S.youtube || DEFAULT_YT)}" placeholder="${DEFAULT_YT}"></label>
       <div class="err" id="yt-err"></div>
       <label class="f"><span>ফেসবুক পেইজের লিংক</span><input id="fb" value="${esc(S.facebook || "")}"></label>
@@ -171,6 +172,111 @@
       const { error } = await sb.auth.updateUser({ password: p });
       busy(e.target, false);
       error ? toast(errText(error), true) : (toast("✅ পাসওয়ার্ড বদলানো হয়েছে"), ($("#np").value = ""));
+    });
+  }
+
+  /* ---------- 🔎 SEO ও গুগল ---------- */
+  async function renderSeo() {
+    const el = $("#view");
+    el.innerHTML = `<div class="boot">লোড হচ্ছে…</div>`;
+    let S = {};
+    try {
+      const { data, error } = await sb.from("settings").select("*"); if (error) throw error;
+      S = Object.fromEntries((data || []).map(r => [r.key, r.value]));
+      await loadTournaments();
+    } catch (e) { el.innerHTML = `<div class="warn">${esc(errText(e))}</div>`; return; }
+    const site = (S.site_url || "https://sports.mtvbd.com").replace(/\/+$/, "");
+    const len = (v, a, b) => v.length >= a && v.length <= b;
+    const audit = t => {
+      const fx = (t.fixtures || []).filter(f => f && f.home);
+      const checks = [
+        ["নামের দৈর্ঘ্য ১০–৭০ অক্ষর", len(String(t.title || ""), 10, 70)],
+        ["সংক্ষিপ্ত বর্ণনা ৭০–১৬০ অক্ষর (গুগলে যে লেখা দেখায়)", len(String(t.short || ""), 70, 160)],
+        ["কভার ছবি আছে (শেয়ার ও গুগল ইমেজে দেখায়)", !!String(t.image || "").trim()],
+        ["সারসংক্ষেপে কমপক্ষে ২ অনুচ্ছেদ", String(t.overview || "").split(/\n+/).filter(x => x.trim()).length >= 2],
+        ["ভেন্যু দেওয়া আছে", !!String(t.venue || "").trim()],
+        ["শুরুর তারিখ দেওয়া আছে ও বোঝা যায়", !!MT.parseDate(t.start_date)],
+        ["সব ফিক্সচারের তারিখ-সময় বোঝা যায়", !fx.length || fx.every(f => MT.parseDate(f.date) && MT.parseTime(f.time))],
+        ["দলের তালিকা আছে", (t.teams || []).length > 0],
+        ["কমপক্ষে ১টি নিউজ আছে", (t.news || []).length > 0]
+      ];
+      return { checks, score: Math.round(checks.filter(c => c[1]).length / checks.length * 100) };
+    };
+    el.innerHTML = `
+    <div class="box2"><h3>🔎 সাইটের SEO তথ্য</h3>
+      <p class="hint">এই তথ্য গুগলে সাইটের নাম ও বর্ণনা হিসেবে দেখানো হয়। ফাঁকা রাখলে ভালো একটি ডিফল্ট ব্যবহার হবে। প্রতিটি টুর্নামেন্ট, ফিক্সচার, ফলাফল, দল ও নিউজের পেইজের টাইটেল/বর্ণনা নিজে থেকেই টুর্নামেন্টের তথ্য থেকে তৈরি হয়।</p>
+      <label class="f"><span>সাইটের মূল ঠিকানা (ডোমেইন)</span><input id="s-url" value="${esc(S.site_url || "")}" placeholder="https://sports.mtvbd.com"></label>
+      <label class="f"><span>হোমপেইজের টাইটেল (৬০ অক্ষরের মধ্যে ভালো) <b id="c-t" class="cnt"></b></span><input id="s-title" value="${esc(S.seo_title || "")}" placeholder="MTVBD Sports — ময়মনসিংহ টিভি বিডি স্পোর্টস | লাইভ টুর্নামেন্ট"></label>
+      <label class="f"><span>হোমপেইজের বর্ণনা (১২০–১৬০ অক্ষর) <b id="c-d" class="cnt"></b></span><textarea id="s-desc" style="min-height:80px" placeholder="ময়মনসিংহ ও আশেপাশের ক্রিকেট, ফুটবল, কাবাডিসহ সব টুর্নামেন্টের লাইভ স্ট্রিমিং…">${esc(S.seo_description || "")}</textarea></label>
+      <label class="f"><span>কিওয়ার্ড (কমা দিয়ে)</span><input id="s-kw" value="${esc(S.seo_keywords || "")}" placeholder="ময়মনসিংহ টিভি বিডি, ক্রিকেট লাইভ, ফুটবল ফিক্সচার"></label>
+      <label class="f"><span>শেয়ার ছবি (ফেসবুকে লিংক শেয়ার করলে যে ছবি আসে; ১২০০×৬৩০ ভালো)</span><input id="s-og" value="${esc(S.og_image || "")}" placeholder="https://... (ফাঁকা থাকলে ডিফল্ট ছবি)"></label>
+      <div class="actions"><button type="button" class="btn small ghost" id="og-pick">📷 ছবি আপলোড</button><input type="file" id="og-file" accept="image/jpeg,image/png,image/webp" hidden></div>
+      <div class="err" id="s-err"></div>
+      <button class="btn" id="seo-save">💾 সেভ করুন</button></div>
+
+    <div class="box2"><h3>📈 গুগল অ্যানালিটিক্স ও সার্চ কনসোল</h3>
+      <p class="hint">শুধু আইডি/কোড বসান, সাইটের সব পেইজে নিজে থেকে যুক্ত হয়ে যাবে (কোড কপি-পেস্টের দরকার নেই)। সেভ করার পর ১–২ মিনিটের মধ্যে কাজ করবে।</p>
+      <label class="f"><span>গুগল অ্যানালিটিক্স মেজারমেন্ট আইডি (যেমন: G-ABCDE12345)</span><input id="s-ga" value="${esc(S.ga_id || "")}" placeholder="G-XXXXXXXXXX"></label>
+      <label class="f"><span>গুগল সার্চ কনসোল ভেরিফিকেশন কোড (HTML ট্যাগের content="…" এর ভেতরের লেখা)</span><input id="s-gsc" value="${esc(S.gsc_verify || "")}" placeholder="abcDEF123..."></label>
+      <label class="f"><span>Bing Webmaster ভেরিফিকেশন কোড (ঐচ্ছিক)</span><input id="s-bing" value="${esc(S.bing_verify || "")}" placeholder="ABCDEF1234..."></label>
+      <div class="err" id="g-err"></div>
+      <button class="btn" id="g-save">💾 সেভ করুন</button></div>
+
+    <div class="box2"><h3>🚀 গুগলে সাইট যুক্ত করার ধাপ (একবারই করতে হবে)</h3>
+      <ol class="seo-steps">
+        <li><b>সার্চ কনসোলে যান:</b> <a href="https://search.google.com/search-console" target="_blank" rel="noopener">search.google.com/search-console</a> → "Add property" → <b>URL prefix</b> বেছে লিখুন <code>${esc(site)}/</code></li>
+        <li><b>ভেরিফাই করুন:</b> "HTML tag" পদ্ধতি বেছে নিন। যে ট্যাগ দেখাবে তার <code>content="…"</code> এর ভেতরের লেখাটুকু ওপরের "সার্চ কনসোল ভেরিফিকেশন কোড" ঘরে বসিয়ে সেভ করুন, তারপর সার্চ কনসোলে <b>Verify</b> চাপুন। (২–৩ মিনিট অপেক্ষা করুন)</li>
+        <li><b>সাইটম্যাপ জমা দিন:</b> সার্চ কনসোলের বাম মেনুতে <b>Sitemaps</b> → লিখুন <code>sitemap.xml</code> → Submit। সাইটম্যাপ নিজে থেকে আপডেট হয়, নতুন টুর্নামেন্ট যোগ করলে আর কিছু করতে হবে না।</li>
+        <li><b>দ্রুত ইনডেক্স:</b> উপরের সার্চ বারে হোমপেইজ ও প্রধান টুর্নামেন্টের লিংক বসিয়ে <b>"Request indexing"</b> চাপুন।</li>
+        <li><b>অ্যানালিটিক্স:</b> <a href="https://analytics.google.com" target="_blank" rel="noopener">analytics.google.com</a> → Admin → Create property → Web stream (${esc(site)}) → "G-" দিয়ে শুরু আইডি কপি করে ওপরে বসান।</li>
+        <li><b>লিংক বাড়ান (র‍্যাংকের জন্য সবচেয়ে কার্যকর):</b> ফেসবুক পেইজের "About"-এ, ইউটিউব চ্যানেলের বিবরণে ও প্রতিটি ভিডিওর ডেসক্রিপশনে ${esc(site)} লিংক দিন। প্রতিটি ম্যাচের পর ফলাফল ও নিউজ নিয়মিত আপডেট করুন।</li>
+      </ol>
+      <div class="actions">
+        <a class="btn small ghost" href="${esc(site)}/sitemap.xml" target="_blank" rel="noopener">🗺 সাইটম্যাপ দেখুন</a>
+        <a class="btn small ghost" href="${esc(site)}/robots.txt" target="_blank" rel="noopener">🤖 robots.txt</a>
+        <a class="btn small ghost" href="https://search.google.com/test/rich-results?url=${encodeURIComponent(site + "/")}" target="_blank" rel="noopener">🧪 Rich Results টেস্ট</a>
+        <a class="btn small ghost" href="https://pagespeed.web.dev/analysis?url=${encodeURIComponent(site + "/")}" target="_blank" rel="noopener">⚡ PageSpeed</a>
+        <a class="btn small ghost" href="https://www.google.com/search?q=${encodeURIComponent("site:" + site.replace(/^https?:\/\//, ""))}" target="_blank" rel="noopener">🔍 গুগলে ইনডেক্স দেখুন</a></div></div>
+
+    <div class="box2"><h3>✅ টুর্নামেন্ট অনুযায়ী SEO চেকলিস্ট</h3>
+      <p class="hint">যত বেশি ঘর সবুজ, গুগলে তত ভালো দেখাবে। লাল ঘরগুলো ঠিক করতে টুর্নামেন্ট এডিট করুন।</p>
+      ${tournaments.length ? tournaments.map(t => { const a = audit(t); return `<details class="seo-t"><summary><span class="sc ${a.score >= 80 ? "g" : a.score >= 55 ? "y" : "r"}">${a.score}%</span><b>${esc(t.title)}</b><a class="btn small ghost" data-edit="${esc(t.id)}">✏️ এডিট</a></summary>
+        <ul class="seo-chk">${a.checks.map(c => `<li class="${c[1] ? "ok" : "no"}">${c[1] ? "✔" : "✖"} ${c[0]}</li>`).join("")}</ul></details>`; }).join("") : `<div class="hint">এখনো কোনো টুর্নামেন্ট নেই।</div>`}</div>`;
+
+    const cnt = () => { $("#c-t").textContent = `(${$("#s-title").value.length})`; $("#c-d").textContent = `(${$("#s-desc").value.length})`; };
+    cnt(); $("#s-title").addEventListener("input", cnt); $("#s-desc").addEventListener("input", cnt);
+    $$("[data-edit]").forEach(a => a.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); renderEditor(tournaments.find(x => x.id === a.dataset.edit)); }));
+    async function save(rows, btn, ok) {
+      busy(btn, true, "সেভ হচ্ছে…");
+      const { error } = await sb.from("settings").upsert(rows, { onConflict: "key" });
+      busy(btn, false);
+      error ? toast("সেভ হয়নি: " + errText(error), true) : toast(ok);
+    }
+    $("#seo-save").addEventListener("click", e => {
+      const u = $("#s-url").value.trim().replace(/\/+$/, ""), og = $("#s-og").value.trim();
+      if (u && !/^https:\/\/[^\s/]+$/i.test(u)) { $("#s-err").textContent = "ঠিকানা https:// দিয়ে শুরু হবে এবং শেষে / বা পেইজ নাম থাকবে না (যেমন: https://sports.mtvbd.com)।"; return; }
+      if (og && !/^https?:\/\//i.test(og)) { $("#s-err").textContent = "শেয়ার ছবির লিংক http:// বা https:// দিয়ে শুরু হতে হবে।"; return; }
+      $("#s-err").textContent = "";
+      save([{ key: "site_url", value: u }, { key: "seo_title", value: $("#s-title").value.trim() }, { key: "seo_description", value: $("#s-desc").value.trim() },
+        { key: "seo_keywords", value: $("#s-kw").value.trim() }, { key: "og_image", value: og }], e.target, "✅ SEO তথ্য সেভ হয়েছে (১–২ মিনিটে সাইটে আসবে)");
+    });
+    $("#g-save").addEventListener("click", e => {
+      const ga = $("#s-ga").value.trim(), gsc = $("#s-gsc").value.trim(), bing = $("#s-bing").value.trim();
+      if (ga && !/^(G|GT|AW)-[A-Za-z0-9]{4,20}$/.test(ga)) { $("#g-err").textContent = "অ্যানালিটিক্স আইডি G- দিয়ে শুরু হতে হবে (যেমন G-ABCDE12345)।"; return; }
+      if ((gsc && !/^[\w-]{10,100}$/.test(gsc)) || (bing && !/^[\w-]{10,100}$/.test(bing))) { $("#g-err").textContent = "ভেরিফিকেশন কোডে শুধু অক্ষর, সংখ্যা, - ও _ থাকবে। শুধু content=\"…\" এর ভেতরের অংশ বসান, পুরো ট্যাগ নয়।"; return; }
+      $("#g-err").textContent = "";
+      save([{ key: "ga_id", value: ga }, { key: "gsc_verify", value: gsc }, { key: "bing_verify", value: bing }], e.target, "✅ সেভ হয়েছে (১–২ মিনিটে সাইটে চালু হবে)");
+    });
+    $("#og-pick").addEventListener("click", () => $("#og-file").click());
+    $("#og-file").addEventListener("change", async e => {
+      const f = e.target.files[0]; if (!f) return; const b = $("#og-pick"); busy(b, true, "আপলোড হচ্ছে…");
+      try {
+        const blob = await shrink(f, 1600), path = `seo/${Date.now()}.jpg`;
+        const up = await sb.storage.from("images").upload(path, blob, { contentType: "image/jpeg", cacheControl: "31536000" });
+        if (up.error) throw up.error;
+        $("#s-og").value = sb.storage.from("images").getPublicUrl(path).data.publicUrl; toast("✅ ছবি আপলোড হয়েছে (সেভ করতে ভুলবেন না)");
+      } catch (err) { toast("ছবি আপলোড হয়নি: " + errText(err), true); }
+      busy(b, false); e.target.value = "";
     });
   }
 
@@ -388,6 +494,132 @@
     return blob;
   }
 
+  /* ---------- দল সম্পাদনা (দলের তথ্য, কোচ, যোগাযোগ, প্লেয়ার ও ছবি) ---------- */
+  /* ডেটাবেসে teams তালিকায় থাকে: "নাম" (সাধারণ), "# গ্রুপের নাম" (শিরোনাম) অথবা দলের পূর্ণ তথ্যসহ অবজেক্ট */
+  function teamsToEditor(list) {
+    let group = "";
+    const out = [];
+    (list || []).forEach(x => {
+      if (typeof x === "string") {
+        const n = x.trim(); if (!n) return;
+        if (n.startsWith("#")) group = n.replace(/^#+\s*/, ""); else out.push({ name: n, group, players: [] });
+      } else if (x && typeof x === "object" && x.name) {
+        const o = JSON.parse(JSON.stringify(x)); o.group = o.group != null ? o.group : group;
+        if (o.group) group = o.group;
+        o.players = Array.isArray(o.players) ? o.players : []; out.push(o);
+      }
+    });
+    return out;
+  }
+  function teamsFromEditor(arr) {
+    const res = []; let cur = "";
+    arr.forEach(t => {
+      const name = String(t.name || "").trim(); if (!name) return;
+      const g = String(t.group || "").trim();
+      if (g !== cur && (g || cur)) { res.push("# " + (g || "অন্যান্য")); cur = g || "অন্যান্য"; }
+      const o = { name };
+      ["info", "coach", "phone", "facebook"].forEach(k => { const v = String(t[k] || "").trim(); if (v) o[k] = v; });
+      const pl = (t.players || []).map(p => {
+        const q = { name: String(p.name || "").trim() };
+        ["role", "no", "photo"].forEach(k => { const v = String(p[k] || "").trim(); if (v) q[k] = v; });
+        return q;
+      }).filter(p => p.name);
+      if (pl.length) o.players = pl;
+      res.push(Object.keys(o).length > 1 ? o : name);
+    });
+    return res;
+  }
+  function teamEditor(host, teams) {
+    const pcount = t => (t.players || []).filter(p => String(p.name || "").trim()).length;
+    function playerRow(p, ti, pi) {
+      return `<div class="pl-row" data-p="${pi}">
+        <div class="pl-photo">${p.photo ? `<img src="${esc(p.photo)}" alt="">` : "👤"}</div>
+        <div class="pl-fields">
+          <input data-pk="name" value="${esc(p.name || "")}" placeholder="খেলোয়াড়ের নাম">
+          <input data-pk="role" value="${esc(p.role || "")}" placeholder="পজিশন (ঐচ্ছিক)">
+          <input data-pk="no" value="${esc(p.no || "")}" placeholder="জার্সি নং" inputmode="numeric">
+        </div>
+        <div class="pl-acts"><button type="button" data-ppick title="ছবি দিন">📷</button>${p.photo ? `<button type="button" data-prm title="ছবি সরান">✖</button>` : ""}<button type="button" data-pup>↑</button><button type="button" data-pdel title="মুছুন">🗑</button></div>
+      </div>`;
+    }
+    function draw() {
+      host.innerHTML = `<div class="tm-bulk"><label class="f"><span>একসাথে অনেক দল যোগ করুন (প্রতি লাইনে একটি দল; গ্রুপ থাকলে <b># গ্রুপ ‘এ’</b> লিখে নিচে সেই গ্রুপের দল দিন)</span>
+          <textarea id="tm-bulk" placeholder="# গ্রুপ ‘এ’&#10;আল হেলাল এসি&#10;পাঁচবাগ স্পোর্টিং ক্লাব"></textarea></label>
+          <button type="button" class="btn small ghost" data-bulk>+ তালিকা থেকে যোগ করুন</button></div>`
+        + (teams.length ? "" : `<div class="tm-empty">এখনো কোনো দল নেই।</div>`)
+        + teams.map((t, i) => `<details class="tm-card" data-t="${i}" ${t._open ? "open" : ""}>
+          <summary><span class="tm-name">${esc(t.name || "নতুন দল")}</span><small>${t.group ? esc(t.group) + " • " : ""}${pcount(t)} জন প্লেয়ার</small>
+            <span class="tm-acts"><button type="button" data-tup="${i}">↑</button><button type="button" data-tdown="${i}">↓</button><button type="button" data-tdel="${i}">🗑</button></span></summary>
+          <div class="tm-body">
+            <div class="row-grid">
+              <label class="f w3"><span>দলের নাম</span><input data-tk="name" value="${esc(t.name || "")}"></label>
+              <label class="f w3"><span>গ্রুপ (ঐচ্ছিক)</span><input data-tk="group" value="${esc(t.group || "")}" placeholder="গ্রুপ ‘এ’"></label>
+              <label class="f w3"><span>কোচ / ম্যানেজার (ঐচ্ছিক)</span><input data-tk="coach" value="${esc(t.coach || "")}"></label>
+              <label class="f w3"><span>ফোন নম্বর (ঐচ্ছিক — দর্শক "কল করুন" বাটনে পাবে)</span><input data-tk="phone" value="${esc(t.phone || "")}" inputmode="tel" placeholder="01XXXXXXXXX"></label>
+              <label class="f w6"><span>ফেসবুক পেইজ / গ্রুপের লিংক (ঐচ্ছিক)</span><input data-tk="facebook" value="${esc(t.facebook || "")}" placeholder="https://facebook.com/..."></label>
+              <label class="f w6"><span>দলের সংক্ষিপ্ত পরিচিতি (ঐচ্ছিক)</span><textarea data-tk="info" style="min-height:70px">${esc(t.info || "")}</textarea></label>
+            </div>
+            <h4 class="pl-h">🏃 প্লেয়ার তালিকা</h4>
+            <div class="pl-list">${(t.players || []).map((p, pi) => playerRow(p, i, pi)).join("")}</div>
+            <div class="pl-add"><button type="button" class="btn small ghost" data-padd>+ প্লেয়ার যোগ করুন</button>
+              <label class="f" style="margin:8px 0 0"><span>অথবা একসাথে অনেকের নাম (প্রতি লাইনে একজন)</span><textarea data-pbulk style="min-height:64px"></textarea></label>
+              <button type="button" class="btn small ghost" data-pbulkgo>+ নামগুলো যোগ করুন</button></div>
+            <input type="file" accept="image/jpeg,image/png,image/webp" hidden data-pfile>
+          </div></details>`).join("");
+    }
+    host.addEventListener("toggle", e => { const c = e.target.closest && e.target.closest(".tm-card"); if (c && teams[+c.dataset.t]) teams[+c.dataset.t]._open = c.open; }, true);
+    host.addEventListener("input", e => {
+      const c = e.target.closest(".tm-card"); if (!c) return;
+      const t = teams[+c.dataset.t];
+      if (e.target.dataset.tk) {
+        t[e.target.dataset.tk] = e.target.value;
+        if (["name", "group"].includes(e.target.dataset.tk)) { $(".tm-name", c).textContent = t.name || "নতুন দল"; $("small", c).textContent = (t.group ? t.group + " • " : "") + pcount(t) + " জন প্লেয়ার"; }
+      } else if (e.target.dataset.pk) {
+        const r = e.target.closest(".pl-row"); t.players[+r.dataset.p][e.target.dataset.pk] = e.target.value;
+        if (e.target.dataset.pk === "name") $("small", c).textContent = (t.group ? t.group + " • " : "") + pcount(t) + " জন প্লেয়ার";
+      }
+    });
+    let pend = null;
+    host.addEventListener("click", e => {
+      const b = e.target.closest("button"); if (!b) return;
+      if (b.hasAttribute("data-bulk")) {
+        let g = "";
+        $("#tm-bulk", host).value.split(/\n/).map(x => x.trim()).filter(Boolean).forEach(n => { if (n.startsWith("#")) g = n.replace(/^#+\s*/, ""); else teams.push({ name: n, group: g, players: [] }); });
+        draw(); return;
+      }
+      if (b.dataset.tup != null || b.dataset.tdown != null || b.dataset.tdel != null) {
+        e.preventDefault(); e.stopPropagation();
+        if (b.dataset.tdel != null) { const t = teams[+b.dataset.tdel]; if (!confirm(`"${t.name || "এই দল"}" মুছে ফেলবেন?`)) return; teams.splice(+b.dataset.tdel, 1); }
+        else if (b.dataset.tup != null) { const i = +b.dataset.tup; if (i > 0) [teams[i - 1], teams[i]] = [teams[i], teams[i - 1]]; }
+        else { const i = +b.dataset.tdown; if (i < teams.length - 1) [teams[i + 1], teams[i]] = [teams[i], teams[i + 1]]; }
+        draw(); return;
+      }
+      const c = b.closest(".tm-card"); if (!c) return;
+      const t = teams[+c.dataset.t], r = b.closest(".pl-row"), pi = r ? +r.dataset.p : -1;
+      if (b.hasAttribute("data-padd")) { t.players.push({ name: "" }); draw(); const ins = $$(".tm-card", host)[+c.dataset.t].querySelectorAll('.pl-row [data-pk="name"]'); ins[ins.length - 1].focus(); }
+      else if (b.hasAttribute("data-pbulkgo")) { $("[data-pbulk]", c).value.split(/\n/).map(x => x.trim()).filter(Boolean).forEach(n => t.players.push({ name: n })); draw(); }
+      else if (b.hasAttribute("data-pdel")) { t.players.splice(pi, 1); draw(); }
+      else if (b.hasAttribute("data-pup")) { if (pi > 0) { [t.players[pi - 1], t.players[pi]] = [t.players[pi], t.players[pi - 1]]; draw(); } }
+      else if (b.hasAttribute("data-prm")) { delete t.players[pi].photo; draw(); }
+      else if (b.hasAttribute("data-ppick")) { pend = { t, pi, r }; $("[data-pfile]", c).click(); }
+    });
+    host.addEventListener("change", async e => {
+      if (!e.target.hasAttribute("data-pfile")) return;
+      const f = e.target.files[0]; if (!f || !pend) return;
+      const { t, pi, r } = pend, btn = $("[data-ppick]", r); busy(btn, true, "…");
+      try {
+        const blob = await shrink(f, 600);
+        const path = `players/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+        const up = await sb.storage.from("images").upload(path, blob, { contentType: "image/jpeg", cacheControl: "31536000" });
+        if (up.error) throw up.error;
+        t.players[pi].photo = sb.storage.from("images").getPublicUrl(path).data.publicUrl;
+        draw(); toast("✅ ছবি আপলোড হয়েছে (সেভ করতে ভুলবেন না)");
+      } catch (err) { toast("ছবি আপলোড হয়নি: " + errText(err), true); busy(btn, false); }
+      e.target.value = "";
+    });
+    draw();
+  }
+
   /* ---------- editor ---------- */
   function renderEditor(t) {
     const isNew = !t;
@@ -426,8 +658,7 @@
 
       <div class="box2"><h3>ফিক্সচার</h3><p class="hint">আসন্ন ম্যাচের তালিকা। তারিখ-সময় দিলে হোমপেইজের "ম্যাচ" অংশে ম্যাচটি নিজে থেকে আসন্ন → 🔴 লাইভ (শুরুর সময় হলে) → সম্পন্ন হয়ে যাবে। ফলাফল দিতে ওপরের "🏁 ফলাফল" ট্যাব ব্যবহার করুন। রাউন্ড/গ্রুপের নাম একই হলে ম্যাচগুলো একসাথে দেখাবে।</p><div id="fx"></div></div>
       <div class="box2"><h3>ফলাফল</h3><p class="hint">নতুন ফলাফল সহজে দিতে ওপরের "🏁 ফলাফল" ট্যাব ব্যবহার করুন (ফিক্সচারের ম্যাচেই স্কোর বসে)। এই বক্সটি শুধু আলাদা/পুরোনো ফলাফলের জন্য। ম্যাচ শেষ হলে এখানে ফলাফল যোগ করা যায়। "লাইভ ম্যাচ লিংক" দিলে দর্শক ফলাফলের নিচের "▶ ম্যাচ দেখুন" বাটনে ক্লিক করে ম্যাচটি দেখতে পারবে।</p><div id="rs"></div></div>
-      <div class="box2"><h3>দল</h3><p class="hint">প্রতিটি দলের নাম আলাদা লাইনে লিখুন। গ্রুপ থাকলে আলাদা লাইনে <b># গ্রুপ ‘এ’</b> লিখে তার নিচে সেই গ্রুপের দলগুলো দিন।</p>
-        <label class="f"><textarea name="teams" style="min-height:140px" placeholder="আল হেলাল এসি&#10;পাঁচবাগ স্পোর্টিং ক্লাব">${esc((d.teams || []).join("\n"))}</textarea></label></div>
+      <div class="box2"><h3>দল</h3><p class="hint">দল যোগ করুন, তারপর যেকোনো দলে ক্লিক করে ভেতরে ঢুকলে কোচ, সংক্ষিপ্ত পরিচিতি, যোগাযোগ (ফোন/ফেসবুক) ও প্লেয়ার তালিকা (নামের সাথে ছবি) দিতে পারবেন — সবই ঐচ্ছিক। ফাঁকা রাখলে দর্শক শুধু দলের নাম দেখবে।</p><div id="tm"></div></div>
       <div class="box2"><h3>নিউজ</h3><div id="nw"></div></div>
       <div class="box2"><h3>পুরস্কার</h3><div id="aw"></div></div>
 
@@ -437,6 +668,8 @@
 
     listEditor($("#fx"), d.fixtures, SCHEMAS.fixtures, "ম্যাচ যোগ করুন");
     listEditor($("#rs"), d.results, SCHEMAS.results, "ফলাফল যোগ করুন");
+    const tmArr = teamsToEditor(d.teams);
+    teamEditor($("#tm"), tmArr);
     listEditor($("#nw"), d.news, SCHEMAS.news, "নিউজ যোগ করুন");
     listEditor($("#aw"), d.awards, SCHEMAS.awards, "পুরস্কার যোগ করুন");
 
@@ -469,13 +702,15 @@
       const bad = [["video", d.fixtures, "ফিক্সচারের ভিডিও"], ["watch", d.results, "ফলাফলের লাইভ ম্যাচ"], ["link", d.news, "নিউজের"]]
         .find(([k, rows]) => rows.some(r => String(r[k] || "").trim() && !/^https?:\/\//i.test(String(r[k]).trim())));
       if (bad) { toast(`${bad[2]} লিংক http:// বা https:// দিয়ে শুরু হতে হবে`, true); return; }
+      const badFb = tmArr.find(t => String(t.facebook || "").trim() && !/^https?:\/\//i.test(String(t.facebook).trim()));
+      if (badFb) { toast(`"${badFb.name}" দলের ফেসবুক লিংক http:// বা https:// দিয়ে শুরু হতে হবে`, true); return; }
       const row = {
         id: d.id, title: g("title"), sport: g("sport") || "ফুটবল", status: g("status"), image: g("image"), short: g("short"),
         organizer: g("organizer"), venue: g("venue"), district: g("district"), format: g("format"),
         start_date: g("start_date"), end_date: g("end_date"), teams_count: g("teams_count"), overview: g("overview"),
         fixtures: cleanRows(d.fixtures, SCHEMAS.fixtures), results: cleanRows(d.results, SCHEMAS.results),
         news: cleanRows(d.news, SCHEMAS.news), awards: cleanRows(d.awards, SCHEMAS.awards),
-        teams: g("teams").split(/\n/).map(s => s.trim()).filter(Boolean)
+        teams: teamsFromEditor(tmArr)
       };
       const b = $("#save"); busy(b, true, "সেভ হচ্ছে…");
       const { error } = await sb.from("tournaments").upsert(row, { onConflict: "id" });

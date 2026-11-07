@@ -12,6 +12,8 @@ const DEFAULT_YT = "https://www.youtube.com/@mymensinghtvbd24";
 const safeUrl = u => { u = String(u ?? "").trim(); return /^https?:\/\//i.test(u) ? u : ""; };   // শুধু http/https লিংক গ্রহণযোগ্য
 const ytChannel = () => safeUrl(window.SITE && window.SITE.youtube) || DEFAULT_YT;
 const subUrl = () => { const u = ytChannel(); return u + (u.includes("?") ? "&" : "?") + "sub_confirmation=1"; };
+/* সুন্দর (SEO-বান্ধব) লিংক: /tournament/<id> এবং /tournament/<id>/<ট্যাব> */
+const tUrl = (id, tab) => "/tournament/" + encodeURIComponent(id) + (tab && tab !== "overview" ? "/" + tab : "");
 const BN_DIG = "০১২৩৪৫৬৭৮৯";
 const bnNum = n => String(n).replace(/\d/g, d => BN_DIG[d]);
 
@@ -26,26 +28,41 @@ function renderChrome(active) {
   $("#site-header").outerHTML = `
   <header class="site-header" id="site-header">
     <div class="container nav">
-      <a class="brand" href="index.html">
+      <a class="brand" href="/">
         <div class="brand-logo">${ICONS.signal}</div>
         <div><div class="brand-name">MTVBD <span>SPORTS</span></div><div class="brand-sub">${esc(S.tagline)}</div></div>
       </a>
-      <nav class="nav-links" id="nav-links">
-        <a href="index.html" class="${active === "home" ? "active" : ""}">হোম</a>
-        <a href="index.html#live">লাইভ টিভি</a>
-        <a href="tournaments.html" class="${active === "tournaments" ? "active" : ""}">টুর্নামেন্ট</a>
-        <a href="index.html#youtube">ইউটিউব</a>
-        <a href="index.html#contact">যোগাযোগ</a>
+      <nav class="nav-links" id="nav-links" aria-label="প্রধান মেনু">
+        <a href="/" class="${active === "home" ? "active" : ""}">হোম</a>
+        <a href="/#live">লাইভ টিভি</a>
+        <a href="/tournaments" class="${active === "tournaments" ? "active" : ""}">টুর্নামেন্ট</a>
+        <a href="/#youtube">ইউটিউব</a>
+        <a href="/#contact">যোগাযোগ</a>
       </nav>
       <button class="menu-btn" id="menu-btn" aria-label="মেনু">${ICONS.menu}</button>
     </div>
   </header>`;
+  const order = { live: 0, upcoming: 1, completed: 2 };
+  const ts = [...(window.TOURNAMENTS || [])].sort((a, b) => order[a.status] - order[b.status]).slice(0, 5);
+  const yt = ytChannel(), fb = safeUrl(S.facebook);
   $("#site-footer").outerHTML = `
-  <footer class="site-footer">
-    <div class="container footer-in">
-      <div>© ${new Date().getFullYear()} ${esc(S.name)} — ${esc(S.tagline)}। সর্বস্বত্ব সংরক্ষিত।</div>
-      <div><a href="${esc(S.facebook)}" target="_blank" rel="noopener">Facebook</a> &nbsp;•&nbsp; <a href="${esc(ytChannel())}" target="_blank" rel="noopener">YouTube</a> &nbsp;•&nbsp; <a href="tel:${esc(S.phoneIntl)}">${esc(S.phone)}</a></div>
+  <footer class="site-footer" id="site-footer">
+    <div class="container foot-grid">
+      <div class="f-brand">
+        <a class="brand" href="/"><div class="brand-logo">${ICONS.signal}</div><div><div class="brand-name">MTVBD <span>SPORTS</span></div><div class="brand-sub">${esc(S.tagline)}</div></div></a>
+        <p>ময়মনসিংহ ও আশেপাশের ক্রিকেট, ফুটবল, কাবাডিসহ সব স্পোর্টস ইভেন্ট ও টুর্নামেন্টের লাইভ সম্প্রচার, ফিক্সচার, ফলাফল ও নিউজ — এক জায়গায়।</p>
+        <div class="f-social">${fb ? `<a href="${esc(fb)}" target="_blank" rel="noopener noreferrer" aria-label="ফেসবুক পেইজ">📘 Facebook</a>` : ""}<a href="${esc(yt)}" target="_blank" rel="noopener noreferrer" aria-label="ইউটিউব চ্যানেল">▶ YouTube</a></div>
+      </div>
+      <nav class="f-col" aria-label="দ্রুত লিংক"><h4>দ্রুত লিংক</h4>
+        <a href="/">হোম</a><a href="/#live">লাইভ টিভি</a><a href="/tournaments">সব টুর্নামেন্ট</a><a href="/#youtube">ইউটিউব চ্যানেল</a><a href="/#contact">যোগাযোগ</a></nav>
+      <nav class="f-col" aria-label="টুর্নামেন্ট"><h4>টুর্নামেন্ট</h4>
+        ${ts.map(t => `<a href="${tUrl(t.id)}">${esc(t.title)}</a>`).join("") || `<span>শীঘ্রই আসছে</span>`}</nav>
+      <div class="f-col"><h4>যোগাযোগ</h4>
+        <p>আপনার টুর্নামেন্ট লাইভ স্ট্রিমিং করতে চান? আমাদের সাথে যোগাযোগ করুন।</p>
+        <a class="f-call" href="tel:${esc(S.phoneIntl)}">📞 কল করুন</a>
+        ${fb ? `<a href="${esc(fb)}" target="_blank" rel="noopener noreferrer">📘 ফেসবুক মেসেজ দিন</a>` : ""}</div>
     </div>
+    <div class="f-bottom"><div class="container">© ${new Date().getFullYear()} ${esc(S.name)} — ${esc(S.tagline)}। সর্বস্বত্ব সংরক্ষিত।</div></div>
   </footer>`;
   $("#menu-btn").addEventListener("click", () => $("#nav-links").classList.toggle("open"));
   $$("#nav-links a").forEach(a => a.addEventListener("click", () => $("#nav-links").classList.remove("open")));
@@ -131,7 +148,7 @@ function countdown(ms) {
 let _mTab = null, _mUser = false;     // _mUser: দর্শক নিজে ট্যাব বেছে নিলে আর নিজে থেকে বদলায় না
 function mpItem(m, now) {
   const t = m.t, f = m.f, done = m.status === "completed";
-  const href = `tournament.html?id=${encodeURIComponent(t.id)}&tab=${done && m.hasRes ? "results" : "fixtures"}&m=${m.id}`;
+  const href = `${tUrl(t.id, done && m.hasRes ? "results" : "fixtures")}?m=${m.id}`;
   let badge, meta;
   if (m.status === "live") {
     badge = `<span class="mp-badge live"><i></i>লাইভ</span>`;
@@ -160,17 +177,15 @@ function renderMatchesPanel() {
   g.upcoming.sort((a, b) => cmp(a.start ?? Infinity, b.start ?? Infinity));
   g.completed.sort((a, b) => cmp(b.start ?? -Infinity, a.start ?? -Infinity));
   if (!_mUser) _mTab = g.live.length ? "live" : g.upcoming.length ? "upcoming" : "completed";
-  const old = $(".mp-list", el), top = old && old.dataset.tab === _mTab ? old.scrollTop : 0;
   const EMPTY = { live: "এই মুহূর্তে কোনো ম্যাচ লাইভ নেই।", upcoming: "এখন কোনো আসন্ন ম্যাচ নেই।", completed: "এখনো কোনো ম্যাচ শেষ হয়নি।" };
   const tabs = [["live", "🔴 লাইভ"], ["upcoming", "আসন্ন"], ["completed", "সম্পন্ন"]]
-    .map(([k, l]) => `<button type="button" class="mp-tab ${k === _mTab ? "on" : ""} ${k === "live" && g.live.length ? "has" : ""}" data-mt="${k}">${l}<b>${bnNum(g[k].length)}</b></button>`).join("");
-  const list = g[_mTab].slice(0, 40);
-  el.innerHTML = `<div class="mp-head"><h3>🏟 ম্যাচ</h3><span class="mp-sub">সময় অনুযায়ী নিজে থেকে আপডেট হয়</span></div>
+    .map(([k, l]) => `<button type="button" class="mp-tab ${k === _mTab ? "on" : ""} ${k === "live" && g.live.length ? "has" : ""}" data-mt="${k}">${l}</button>`).join("");
+  const list = g[_mTab].slice(0, 3);      // শুধু সর্বশেষ/সবচেয়ে কাছের ৩টি ম্যাচ
+  el.innerHTML = `<div class="mp-head"><h3>🏟 ম্যাচ</h3></div>
     <div class="mp-tabs">${tabs}</div>
     <div class="mp-list" data-tab="${_mTab}">${list.length ? list.map(m => mpItem(m, now)).join("")
       : `<div class="mp-empty">${EMPTY[_mTab]}${_mTab === "live" && g.upcoming.length ? `<br><button type="button" data-mt="upcoming">আসন্ন ম্যাচ দেখুন →</button>` : ""}</div>`}</div>
-    <div class="mp-foot"><a href="tournaments.html">সব টুর্নামেন্ট দেখুন →</a></div>`;
-  const nl = $(".mp-list", el); if (nl && top) nl.scrollTop = top;
+    <div class="mp-foot"><a href="/tournaments">সব টুর্নামেন্ট ও ম্যাচ দেখুন →</a></div>`;
 }
 function initMatchesPanel() {
   const el = $("#matches"); if (!el) return;
@@ -196,7 +211,7 @@ function cardHTML(t) {
       <h3>${esc(t.title)}</h3>
       <p>${esc(t.short)}</p>
       <div class="card-meta">${t.start ? `<span>🗓 ${esc(t.start)}</span>` : ""}${t.venue ? `<span>📍 ${esc(t.venue)}</span>` : ""}</div>
-      <a class="btn" href="tournament.html?id=${encodeURIComponent(t.id)}">বিস্তারিত দেখুন →</a>
+      <a class="btn" href="${tUrl(t.id)}">বিস্তারিত দেখুন →</a>
     </div></article>`;
 }
 
@@ -251,10 +266,49 @@ function drawMatchPanels(t) {
   if (pf) pf.innerHTML = `<h2>ফিক্সচার</h2>${fx.length ? fixturesHTML(fx) : soon("ফিক্সচার শীঘ্রই প্রকাশ করা হবে।")}`;
   if (pr) pr.innerHTML = `<h2>ফলাফল</h2>${rs.length ? rs.map(m => matchHTML(m, "results")).join("") : soon("এখনো কোনো ফলাফল নেই।")}`;
 }
-function teamsHTML(list) {             // "# গ্রুপ ‘এ’" লিখলে সেটা শিরোনাম হয়
+/* teams তালিকা: "নাম" | "# গ্রুপ" | {name, info, coach, phone, facebook, players:[{name, role, no, photo}]} */
+function teamSections(list) {
   const secs = [{ h: "", items: [] }];
-  list.forEach(n => { n = String(n).trim(); if (!n) return; if (n.startsWith("#")) secs.push({ h: n.replace(/^#+\s*/, ""), items: [] }); else secs[secs.length - 1].items.push(n); });
-  return secs.filter(s => s.items.length).map(s => `${s.h ? `<h3 class="team-group">${esc(s.h)}</h3>` : ""}<div class="teams-grid">${s.items.map(n => `<div class="team-card"><div class="badge">${esc(n.charAt(0))}</div>${esc(n)}</div>`).join("")}</div>`).join("");
+  (list || []).forEach(x => {
+    if (typeof x === "string") { const n = x.trim(); if (!n) return; if (n.startsWith("#")) secs.push({ h: n.replace(/^#+\s*/, ""), items: [] }); else secs[secs.length - 1].items.push({ name: n }); }
+    else if (x && x.name) secs[secs.length - 1].items.push(x);
+  });
+  return secs.filter(s => s.items.length);
+}
+const hasTeamInfo = t => !!(t.info || t.coach || t.phone || t.facebook || (t.players && t.players.length));
+function teamsHTML(list) {             // "# গ্রুপ ‘এ’" লিখলে সেটা শিরোনাম হয়
+  window._teamIdx = [];
+  return teamSections(list).map(sec => `${sec.h ? `<h3 class="team-group">${esc(sec.h)}</h3>` : ""}<div class="teams-grid">${sec.items.map(t => {
+    const more = hasTeamInfo(t), i = window._teamIdx.push(t) - 1;
+    const inner = `<div class="badge">${esc(String(t.name).charAt(0))}</div><span class="tn">${esc(t.name)}</span>${more ? `<span class="tmore">${t.players && t.players.length ? bnNum(t.players.length) + " জন প্লেয়ার • " : ""}বিস্তারিত →</span>` : ""}`;
+    return more ? `<button type="button" class="team-card has-more" data-team="${i}">${inner}</button>` : `<div class="team-card">${inner}</div>`;
+  }).join("")}</div>`).join("");
+}
+function teamModalHTML(t) {
+  const fb = safeUrl(t.facebook), ph = toIntl(t.phone), pl = (t.players || []).filter(p => p && p.name);
+  return `<div class="tm-modal" id="tm-modal" role="dialog" aria-modal="true" aria-label="${esc(t.name)}"><div class="tm-box">
+    <button type="button" class="tm-x" data-tmclose aria-label="বন্ধ করুন">✕</button>
+    <div class="tm-head"><div class="badge big">${esc(String(t.name).charAt(0))}</div><div><h3>${esc(t.name)}</h3>${t.coach ? `<div class="tm-coach">কোচ/ম্যানেজার: <b>${esc(t.coach)}</b></div>` : ""}</div></div>
+    ${t.info ? `<p class="tm-info">${esc(t.info)}</p>` : ""}
+    ${ph || fb ? `<div class="tm-contact">${ph ? `<a class="btn small" href="tel:${esc(ph)}">📞 কল করুন</a>` : ""}${fb ? `<a class="btn small fb" href="${esc(fb)}" target="_blank" rel="noopener noreferrer">📘 ফেসবুক পেইজ</a>` : ""}</div>` : ""}
+    ${pl.length ? `<h4 class="tm-ph">প্লেয়ার তালিকা (${bnNum(pl.length)} জন)</h4><div class="pl-grid">${pl.map(p => {
+      const im = safeUrl(p.photo);
+      return `<div class="pl-card"><div class="pl-av">${im ? `<img src="${esc(im)}" alt="${esc(p.name)}" loading="lazy">` : esc(String(p.name).charAt(0))}${p.no ? `<i>${esc(p.no)}</i>` : ""}</div><b>${esc(p.name)}</b>${p.role ? `<small>${esc(p.role)}</small>` : ""}</div>`;
+    }).join("")}</div>` : ""}
+  </div></div>`;
+}
+function initTeamModal() {
+  document.addEventListener("click", e => {
+    const c = e.target.closest("[data-team]");
+    if (c) {
+      const t = (window._teamIdx || [])[+c.dataset.team]; if (!t) return;
+      const old = $("#tm-modal"); if (old) old.remove();
+      document.body.insertAdjacentHTML("beforeend", teamModalHTML(t)); document.body.classList.add("no-scroll");
+      $("#tm-modal .tm-x").focus(); return;
+    }
+    if (e.target.closest("[data-tmclose]") || e.target.id === "tm-modal") { const m = $("#tm-modal"); if (m) m.remove(); document.body.classList.remove("no-scroll"); }
+  });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") { const m = $("#tm-modal"); if (m) { m.remove(); document.body.classList.remove("no-scroll"); } } });
 }
 function newsHTML(n) {
   const l = safeUrl(n.link);
@@ -263,12 +317,15 @@ function newsHTML(n) {
 const soon = txt => `<div class="empty">${txt}</div>`;
 
 function initDetail() {
-  const id = new URLSearchParams(location.search).get("id");
+  const pm = location.pathname.match(/\/tournament\/([^/]+)(?:\/([a-z]+))?\/?$/);
+  const qs = new URLSearchParams(location.search);
+  const id = pm ? decodeURIComponent(pm[1]) : qs.get("id");
   let t = window.TOURNAMENTS.find(x => x.id === id);
   const root = $("#detail");
-  if (!t) { root.innerHTML = `<div class="container" style="padding:80px 18px;text-align:center"><h2>টুর্নামেন্টটি খুঁজে পাওয়া যায়নি</h2><p style="margin:12px 0 20px;color:#6b7392">লিংকটি সঠিক নয় অথবা টুর্নামেন্টটি সরানো হয়েছে।</p><a class="btn" href="tournaments.html">সব টুর্নামেন্ট দেখুন</a></div>`; return; }
+  if (!t) { root.innerHTML = `<div class="container" style="padding:80px 18px;text-align:center"><h2>টুর্নামেন্টটি খুঁজে পাওয়া যায়নি</h2><p style="margin:12px 0 20px;color:#6b7392">লিংকটি সঠিক নয় অথবা টুর্নামেন্টটি সরানো হয়েছে।</p><a class="btn" href="/tournaments">সব টুর্নামেন্ট দেখুন</a></div>`; return; }
   document.title = t.title + " | MTVBD Sports";
-  const liveHref = "index.html#live";
+  initTeamModal();
+  const liveHref = "/#live";
   const glance = [t.start && `<span>🗓 ${esc(t.start)}</span>`, t.venue && `<span>📍 ${esc(t.venue)}</span>`, t.teamsCount && `<span>👥 ${esc(t.teamsCount)} দল</span>`].filter(Boolean).join("");
 
   const tabs = [
@@ -278,7 +335,7 @@ function initDetail() {
 
   root.innerHTML = `
   <div class="page-hero"><div class="container">
-    <div class="crumbs"><a href="index.html">হোম</a> / <a href="tournaments.html">টুর্নামেন্ট</a> / <span>${esc(t.title)}</span></div>
+    <div class="crumbs"><a href="/">হোম</a> / <a href="/tournaments">টুর্নামেন্ট</a> / <span>${esc(t.title)}</span></div>
     <div class="sport-label">${esc(t.sport)}</div>
     <span class="status ${t.status} hero-status" style="position:static">${t.status === "live" ? "<i></i>" : ""}${STATUS[t.status]}</span>
     <h1>${esc(t.title)}</h1>
@@ -303,24 +360,32 @@ function initDetail() {
       </aside></div></div>
     <div class="panel" id="p-fixtures"></div>
     <div class="panel" id="p-results"></div>
-    <div class="panel" id="p-teams"><h2>অংশগ্রহণকারী দল</h2>${t.teams.length ? teamsHTML(t.teams) : soon("দলের তালিকা শীঘ্রই প্রকাশ করা হবে।")}</div>
+    <div class="panel" id="p-teams"></div>
     <div class="panel" id="p-news"><h2>নিউজ</h2>${t.news.length ? t.news.map(newsHTML).join("") : soon("এই টুর্নামেন্টের কোনো নিউজ এখনো নেই।")}</div>
     <div class="panel" id="p-awards"><h2>পুরস্কার</h2>${t.awards.length ? t.awards.map(a => `<div class="award"><div class="trophy">🏆</div><div><b>${esc(a.title)}</b><div style="color:#6b7392">${esc(a.winner || "")}</div></div></div>`).join("") : soon("পুরস্কারের তথ্য শীঘ্রই প্রকাশ করা হবে।")}</div>
   </div>`;
 
-  drawMatchPanels(t);
+  const drawTeams = () => { $("#p-teams").innerHTML = `<h2>অংশগ্রহণকারী দল</h2>${t.teams.length ? teamsHTML(t.teams) : soon("দলের তালিকা শীঘ্রই প্রকাশ করা হবে।")}`; };
+  drawTeams(); drawMatchPanels(t);
 
   function go(name, quiet) {
     $$(".tab").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
     $$(".panel").forEach(p => p.classList.toggle("active", p.id === "p-" + name));
     const active = $(".tab.active"); if (active) active.scrollIntoView({ inline: "center", block: "nearest", behavior: quiet ? "auto" : "smooth" });
     if (!quiet) { const bar = $(".tabs-bar"); window.scrollTo({ top: bar.offsetTop - 68, behavior: "smooth" }); }
+    /* ঠিকানা ও ট্যাবের শিরোনাম বদলায়, যাতে শেয়ার করা লিংক সরাসরি ওই ট্যাবে খোলে */
+    if (pm || !qs.get("id")) {
+      const label = (tabs.find(x => x[0] === name) || [])[1];
+      document.title = (name === "overview" ? t.title : `${t.title} — ${label}`) + " | MTVBD Sports";
+      history.replaceState(null, "", tUrl(t.id, name) + (location.search.includes("m=") && quiet ? location.search : ""));
+      const cn = document.querySelector('link[rel="canonical"]'); if (cn) cn.href = location.origin + tUrl(t.id, name);
+    }
   }
   $$(".tab").forEach(b => b.addEventListener("click", () => go(b.dataset.tab)));
   $$("[data-go]").forEach(a => a.addEventListener("click", () => go(a.dataset.go)));
 
   /* হোমপেইজের ম্যাচে ক্লিক করলে সরাসরি ফলাফল/ফিক্সচার ট্যাবে গিয়ে ওই ম্যাচটি হাইলাইট হয় (?tab=results&m=f3) */
-  const qs = new URLSearchParams(location.search), want = qs.get("tab");
+  const want = (pm && pm[2]) || qs.get("tab");
   if (want && want !== "overview" && tabs.some(x => x[0] === want)) {
     go(want, true);
     const mid = qs.get("m");
@@ -330,7 +395,7 @@ function initDetail() {
   }
 
   /* সময় গড়ালে লাইভ/শেষ চিহ্ন, আর অ্যাডমিন নতুন ফলাফল দিলে সেটা নিজে থেকে আসে */
-  const refresh = async () => { if (await reloadData()) t = window.TOURNAMENTS.find(x => x.id === id) || t; drawMatchPanels(t); };
+  const refresh = async () => { if (await reloadData()) { t = window.TOURNAMENTS.find(x => x.id === id) || t; drawTeams(); } drawMatchPanels(t); };
   setInterval(refresh, 60000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
 }
@@ -404,7 +469,7 @@ function applyContact() {
   const S = window.SITE;
   const fb = $("#cta-fb"), call = $("#cta-call");
   if (fb) fb.href = S.facebook;
-  if (call) { call.href = "tel:" + S.phoneIntl; call.textContent = "📞 " + S.phone; }
+  if (call) { call.href = "tel:" + S.phoneIntl; call.textContent = "📞 কল করুন"; call.setAttribute("aria-label", "কল করুন"); }
   const sub = $("#yt-sub"), visit = $("#yt-visit"), handle = $("#yt-handle"), screen = $("#yt-screen");
   if (sub) sub.href = subUrl();
   if (visit) visit.href = ytChannel();

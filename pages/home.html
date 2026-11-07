@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MTVBD Sports — ময়মনসিংহ টিভি বিডি স্পোর্টস | লাইভ টুর্নামেন্ট</title>
+<meta name="description" content="ময়মনসিংহ ও আশেপাশের ক্রিকেট, ফুটবল, কাবাডিসহ বিভিন্ন স্পোর্টস ইভেন্ট ও টুর্নামেন্টের লাইভ স্ট্রিমিং — MTVBD Sports।">
+<meta name="theme-color" content="#0a0f24">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/site.webmanifest">
+<!--SEO-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-page="home">
+<header id="site-header"></header>
+
+<main>
+  <!-- লাইভ টিভি -->
+  <div class="hero" id="live">
+    <div class="container">
+      <div class="hero-head">
+        <span class="live-badge" id="live-badge"><i></i>LIVE</span>
+        <h1>লাইভ টিভি</h1>
+      </div>
+      <div class="hero-grid">
+        <div class="player-wrap">
+          <div class="player" id="player">
+            <div class="player-empty">
+              <div class="ico">📺</div>
+              <b>শীঘ্রই লাইভ শুরু হবে</b>
+              <span>আমাদের সাথেই থাকুন — ম্যাচ শুরু হলে এখানেই লাইভ দেখুন</span>
+            </div>
+          </div>
+        </div>
+        <aside class="matches-panel" id="matches" aria-live="polite"></aside>
+      </div>
+    </div>
+  </div>
+
+  <!-- টুর্নামেন্ট -->
+  <section id="tournaments">
+    <div class="container">
+      <div class="sec-head">
+        <div>
+          <h2 class="sec-title">টুর্নামেন্ট</h2>
+          <p class="sec-sub">লাইভ, আসন্ন ও সম্পন্ন সকল টুর্নামেন্ট এক জায়গায়</p>
+        </div>
+        <div class="filters">
+          <button class="chip active" data-filter="all">সব</button>
+          <button class="chip" data-filter="live">লাইভ</button>
+          <button class="chip" data-filter="upcoming">আসন্ন</button>
+          <button class="chip" data-filter="completed">সম্পন্ন</button>
+        </div>
+      </div>
+      <div class="grid" id="t-grid"><!--SSR_GRID--></div>
+      <div style="text-align:center;margin-top:28px"><a class="btn big" href="/tournaments">সব টুর্নামেন্ট দেখুন →</a></div>
+    </div>
+  </section>
+
+  <!-- ইউটিউব চ্যানেল -->
+  <section id="youtube" style="padding-top:10px">
+    <div class="container">
+      <div class="yt">
+        <div class="yt-text">
+          <span class="yt-kicker"><b></b>YOUTUBE CHANNEL</span>
+          <h2>সব খেলা দেখুন আমাদের <em>ইউটিউব চ্যানেলে</em></h2>
+          <p class="lead">ময়মনসিংহ ও আশেপাশের ক্রিকেট, ফুটবল, কাবাডিসহ সব টুর্নামেন্টের ম্যাচ সরাসরি দেখতে আমাদের ইউটিউব চ্যানেল সাবস্ক্রাইব করুন।</p>
+          <ul class="yt-points">
+            <li>সব বড় টুর্নামেন্টের ম্যাচ সরাসরি (লাইভ)</li>
+            <li>বেল আইকন চালু করলে লাইভ শুরুর সাথে সাথে নোটিফিকেশন পাবেন</li>
+            <li>ফ্রিতে ঘরে বসেই মোবাইলে বা টিভিতে দেখুন</li>
+          </ul>
+          <div class="yt-actions">
+            <a class="btn big yt-sub" id="yt-sub" href="https://www.youtube.com/@mymensinghtvbd24?sub_confirmation=1" target="_blank" rel="noopener">🔔 সাবস্ক্রাইব করুন</a>
+            <a class="btn big outline" id="yt-visit" href="https://www.youtube.com/@mymensinghtvbd24" target="_blank" rel="noopener">▶ চ্যানেলে যান</a>
+          </div>
+        </div>
+        <div class="yt-visual">
+          <a class="yt-screen" id="yt-screen" href="https://www.youtube.com/@mymensinghtvbd24" target="_blank" rel="noopener" aria-label="ইউটিউব চ্যানেল">
+            <span class="live-badge yt-live"><i></i>LIVE</span>
+            <span class="yt-play"></span>
+            <span class="yt-handle" id="yt-handle">@mymensinghtvbd24</span>
+            <span class="yt-bell">🔔</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- যোগাযোগ -->
+  <section id="contact" style="padding-top:10px">
+    <div class="container">
+      <div class="cta">
+        <h2>আপনার টুর্নামেন্ট লাইভ স্ট্রিমিং করতে চান?</h2>
+        <p>ক্রিকেট, ফুটবল, কাবাডিসহ যেকোনো স্পোর্টস ইভেন্ট প্রফেশনাল লাইভ স্ট্রিমিংয়ে সম্প্রচার করতে চাইলে আজই আমাদের সাথে যোগাযোগ করুন।</p>
+        <div class="cta-actions">
+          <a class="btn big fb" id="cta-fb" href="https://www.facebook.com/mymensinghtvbd24" target="_blank" rel="noopener">📘 ফেসবুক পেইজ</a>
+          <a class="btn big call" id="cta-call" href="tel:+8801711615560">📞 01711615560</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer id="site-footer"></footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/config.js"></script>
+<script src="/js/data.js"></script>
+<script src="/js/shared.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

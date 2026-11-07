@@ -1,0 +1,26 @@
+{
+  "functions": {
+    "api/*.js": { "includeFiles": "{pages/**,js/shared.js,js/config.js}" }
+  },
+  "redirects": [
+    { "source": "/index.html", "destination": "/", "permanent": true },
+    { "source": "/tournaments.html", "destination": "/tournaments", "permanent": true },
+    { "source": "/tournament.html", "has": [{ "type": "query", "key": "id", "value": "(?<id>.+)" }], "destination": "/tournament/:id", "permanent": true }
+  ],
+  "rewrites": [
+    { "source": "/", "destination": "/api/render?p=home" },
+    { "source": "/tournaments", "destination": "/api/render?p=tournaments" },
+    { "source": "/tournament/:id/:tab", "destination": "/api/render?p=tournament&id=:id&tab=:tab" },
+    { "source": "/tournament/:id", "destination": "/api/render?p=tournament&id=:id" },
+    { "source": "/sitemap.xml", "destination": "/api/seo?f=sitemap" },
+    { "source": "/robots.txt", "destination": "/api/seo?f=robots" }
+  ],
+  "headers": [
+    { "source": "/admin.html", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }] },
+    { "source": "/pages/(.*)", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }] },
+    { "source": "/(.*)", "headers": [
+      { "key": "X-Content-Type-Options", "value": "nosniff" },
+      { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+    ] }
+  ]
+}

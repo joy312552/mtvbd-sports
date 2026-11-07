@@ -97,3 +97,44 @@ body.admin{background:#eef1f8;min-height:100vh}
 .rc-score input{width:64px;text-align:center;font:inherit;font-size:20px;font-weight:700;border:1px solid #d5dbec;border-radius:10px;padding:8px 4px;outline:none}
 .rc-score input:focus{border-color:var(--red);box-shadow:0 0 0 3px rgba(225,29,46,.12)}
 #rs-list{padding-bottom:10px}
+
+/* দল সম্পাদনা */
+.tm-bulk{background:#f8f9fd;border:1px dashed #cfd6ea;border-radius:12px;padding:12px;margin-bottom:12px}
+.tm-bulk textarea{min-height:80px}
+.tm-empty{color:var(--muted);padding:8px 2px 12px}
+.tm-card{border:1px solid var(--line);border-radius:12px;background:#fff;margin-bottom:10px;overflow:hidden}
+.tm-card[open]{border-color:#bcc5e3;box-shadow:0 4px 14px rgba(10,15,36,.06)}
+.tm-card summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:12px 14px;flex-wrap:wrap}
+.tm-card summary::-webkit-details-marker{display:none}
+.tm-card summary::before{content:"▸";color:var(--red);transition:.2s}
+.tm-card[open] summary::before{transform:rotate(90deg)}
+.tm-name{font-weight:700}
+.tm-card summary small{color:var(--muted)}
+.tm-acts{margin-left:auto;display:flex;gap:6px}
+.tm-acts button,.pl-acts button{border:1px solid #d5dbec;background:#fff;border-radius:8px;padding:4px 9px;font:inherit;font-size:13px;cursor:pointer}
+.tm-acts button:hover,.pl-acts button:hover{background:#eef1f8}
+.tm-body{padding:4px 14px 14px;border-top:1px solid var(--line)}
+.pl-h{margin:10px 0 8px;font-size:16px}
+.pl-row{display:flex;gap:10px;align-items:center;border:1px solid var(--line);background:#f8f9fd;border-radius:10px;padding:8px;margin-bottom:8px}
+.pl-photo{width:46px;height:46px;border-radius:50%;background:#e4e8f5;display:grid;place-items:center;overflow:hidden;flex:0 0 auto;font-size:20px}
+.pl-photo img{width:100%;height:100%;object-fit:cover}
+.pl-fields{flex:1;display:grid;grid-template-columns:2fr 1.3fr .8fr;gap:8px;min-width:0}
+.pl-fields input{font:inherit;font-size:14.5px;border:1px solid #d5dbec;border-radius:8px;padding:8px 10px;min-width:0;width:100%}
+.pl-acts{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.pl-add{margin-top:6px}
+@media(max-width:700px){.pl-row{flex-wrap:wrap}.pl-fields{grid-template-columns:1fr 1fr;flex-basis:calc(100% - 60px)}.pl-fields input:first-child{grid-column:span 2}}
+
+/* SEO ট্যাব */
+.cnt{color:var(--muted);font-weight:500;margin-left:6px}
+.seo-steps{padding-left:20px;line-height:1.75;margin-bottom:14px}
+.seo-steps li{margin-bottom:8px}
+.seo-steps code,.box2 code{background:#eef1f8;border-radius:6px;padding:1px 6px;font-size:13.5px;word-break:break-all}
+.seo-t{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:#fff}
+.seo-t summary{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;list-style:none;flex-wrap:wrap}
+.seo-t summary::-webkit-details-marker{display:none}
+.seo-t summary b{flex:1;min-width:160px;line-height:1.4}
+.sc{border-radius:999px;padding:3px 11px;font-weight:700;font-size:13px}
+.sc.g{background:#e3f6ea;color:#12663a}.sc.y{background:#fff0d6;color:#8a5a00}.sc.r{background:#fde3e5;color:#b3121f}
+.seo-chk{list-style:none;padding:0 16px 14px}
+.seo-chk li{padding:4px 0;font-size:14.5px}
+.seo-chk .ok{color:#12663a}.seo-chk .no{color:#b3121f}
