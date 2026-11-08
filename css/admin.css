@@ -240,7 +240,7 @@ body.no-scroll{overflow:hidden}
 
 /* মোবাইল */
 @media(max-width:900px){
-  .adm-layout{grid-template-columns:1fr}
+  .adm-layout{grid-template-columns:minmax(0,1fr)}
   .adm-side{position:sticky;top:0;height:auto;z-index:40;flex-direction:row;flex-wrap:wrap;align-items:center;padding:8px 10px;gap:6px}
   .adm-side .adm-brand{border:0;padding:4px 6px;flex:1;font-size:15px}
   .adm-side .adm-user{border:0;padding:0;flex-direction:row;align-items:center;font-size:12px}.adm-side .adm-user span{display:none}
@@ -255,3 +255,37 @@ body.no-scroll{overflow:hidden}
   .am{padding:0;align-items:end}.am-box{border-radius:18px 18px 0 0;max-height:94vh}
 }
 @media(max-width:700px){.row-grid .dt-note{grid-column:span 2}}
+
+/* ===== মোবাইল ফ্রেন্ডলি (চূড়ান্ত) ===== */
+html,body{max-width:100%;overflow-x:hidden}
+.adm-side,.adm-main,.adm-main>*,.box2,.tsel,.row-card,.fx-row,.dm,.modal-in{min-width:0}
+.tsel select{min-width:0}
+@media(max-width:900px){
+  .adm-main{width:100%}
+  input,select,textarea{font-size:16px!important}
+  .adm-side{box-shadow:0 2px 10px rgba(0,0,0,.25)}
+  .page-h h2{font-size:21px}
+  .page-h .ph-acts{width:100%}.page-h .ph-acts .btn{flex:1}
+  .tsel{padding:10px 12px}.tsel label{flex:0 0 100%}.tsel select{flex:1 1 100%;width:100%}
+  .box2{padding:14px}
+  .grid2,.grid3{grid-template-columns:1fr!important}
+  .row-grid{grid-template-columns:1fr 1fr}
+  .rc-score{gap:6px}.rc-score .rc-team{flex:1;min-width:0;font-size:14px;line-height:1.25;overflow-wrap:anywhere}.rc-score .rc-team.r{text-align:right}
+  .rc-score input{width:54px;flex:0 0 54px;font-size:20px!important}
+  .rc-head{flex-wrap:wrap;gap:4px 8px}
+  .savebar{padding:10px 12px calc(10px + env(safe-area-inset-bottom));z-index:60}
+  .savebar .btn{flex:1;padding:14px}
+  .fx-row{flex-direction:column;align-items:stretch;gap:8px}
+  .fx-row .fx-acts,.fx-row .row-actions{display:flex;gap:8px}.fx-row .fx-acts>*,.fx-row .row-actions>*{flex:1}
+  .stats{gap:10px}.stat{padding:12px}
+  .btn,button{min-height:42px}
+  .tbl-wrap,.table-wrap{overflow-x:auto}
+  table{display:block;overflow-x:auto;max-width:100%}
+  .am-box{width:100%;max-width:100%}
+  .pl-row{grid-template-columns:1fr 1fr!important}
+  img{max-width:100%}
+}
+@media(max-width:420px){
+  .row-grid{grid-template-columns:1fr}
+  .row-grid .w3,.row-grid .w2{grid-column:auto}
+}
