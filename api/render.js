@@ -36,11 +36,12 @@ module.exports = async (req, res) => {
         head = L.headHTML({ path: L.tPath(id), title: "টুর্নামেন্ট পাওয়া যায়নি | MTVBD Sports", description: D.description, noindex: true }, S, site);
         html = L.inject(html, head, {}); status = 404;
       } else {
+        const ov = L.tSeo(S, t.id), tt = ov.title || t.title;
         const label = (L.TABS.find(x => x[0] === tab) || [])[1];
         const nF = t.fixtures.filter(f => f && f.home).length, nR = t.fixtures.filter(f => f && L.hasRes(f)).length + t.results.length;
         const base = t.short || t.overview[0] || t.title;
         const DESC = {
-          overview: L.clip(base + (t.venue ? ` ভেন্যু: ${t.venue}।` : "") + (t.start ? ` শুরু: ${t.start}।` : ""), 158),
+          overview: ov.description ? L.clip(ov.description, 160) : L.clip(base + (t.venue ? ` ভেন্যু: ${t.venue}।` : "") + (t.start ? ` শুরু: ${t.start}।` : ""), 158),
           fixtures: L.clip(`${t.title}-এর সম্পূর্ণ ফিক্সচার — ${L.bnNum(nF)}টি ম্যাচের তারিখ, সময়, ভেন্যু ও লাইভ ভিডিও লিংক।`, 158),
           results: L.clip(`${t.title}-এর সর্বশেষ ম্যাচের ফলাফল ও স্কোর — ${L.bnNum(nR)}টি ম্যাচের ফলাফল ও ম্যাচ দেখার লিংক।`, 158),
           teams: L.clip(`${t.title}-এ অংশগ্রহণকারী দল, কোচ ও প্লেয়ার তালিকা।`, 158),
@@ -50,9 +51,9 @@ module.exports = async (req, res) => {
         const img = L.safeUrl(t.image) || L.safeUrl(S.og_image) || site + "/images/og-cover.png";
         const ldList = [L.tournamentLd(site, t, img), L.crumbLd(site, [["হোম", "/"], ["টুর্নামেন্ট", "/tournaments"], [t.title, L.tPath(t.id)]].concat(tab !== "overview" ? [[label, L.tPath(t.id, tab)]] : []))];
         if (tab === "news") ldList.push(...L.newsLd(site, t, img));
-        const kw = [t.title, t.sport && t.sport + " টুর্নামেন্ট", t.venue, t.district, label && tab !== "overview" ? t.title + " " + label : "", S.seo_keywords || D.keywords].filter(Boolean).join(", ");
-        head = L.headHTML({ path: L.tPath(t.id, tab), title: tab === "overview" ? `${t.title} | MTVBD Sports` : `${t.title} — ${label} | MTVBD Sports`, description: DESC, keywords: kw, image: L.safeUrl(t.image), imageAlt: t.title, ld: ldList }, S, site);
-        html = L.inject(html, head, { SSR_DETAIL: L.detailHTML(t, tab) });
+        const kw = [ov.keywords, t.title, t.sport && t.sport + " টুর্নামেন্ট", t.venue, t.district, label && tab !== "overview" ? t.title + " " + label : "", S.seo_keywords || D.keywords].filter(Boolean).join(", ");
+        head = L.headHTML({ path: L.tPath(t.id, tab), title: tab === "overview" ? (ov.title ? ov.title : `${t.title} | MTVBD Sports`) : `${tt} — ${label} | MTVBD Sports`, description: DESC, keywords: kw, noindex: !!ov.noindex, image: L.safeUrl(t.image), imageAlt: t.title, ld: ldList }, S, site);
+        html = L.inject(html, head, { SSR_DETAIL: L.detailHTML(t, tab, data.tournaments) });
       }
     }
     L.send(res, status, "text/html", html, status === 404 ? "public, max-age=0, s-maxage=30" : undefined);

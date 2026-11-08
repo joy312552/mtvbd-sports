@@ -93,7 +93,7 @@ function initPlayer() {
   const box = $("#player");
   if (!box) return;
   const badge = $("#live-badge");
-  if (_playerEmpty === null) _playerEmpty = box.innerHTML;
+  if (_playerEmpty === null) _playerEmpty = `<div class="player-empty"><div class="ico">📺</div><b>শীঘ্রই লাইভ শুরু হবে</b><span>আমাদের সাথেই থাকুন — ম্যাচ শুরু হলে এখানেই লাইভ দেখুন</span></div>`;
   const id = ytId(window.SITE.liveUrl);
   if (id === _playerId) return;
   _playerId = id;

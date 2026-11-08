@@ -12,30 +12,25 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" href="/js/app.js" as="script">
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body data-page="home">
-<header id="site-header"></header>
+<header id="site-header" class="sk-header" aria-hidden="true"><div class="container"><div class="sk-brand"><i class="sk sk-logo"></i><div><i class="sk sk-l1"></i><i class="sk sk-l2"></i></div></div></div></header>
 
 <main>
   <!-- লাইভ টিভি -->
   <div class="hero" id="live">
     <div class="container">
       <div class="hero-head">
-        <span class="live-badge" id="live-badge"><i></i>LIVE</span>
+        <span class="live-badge" id="live-badge" style="display:none"><i></i>LIVE</span>
         <h1>লাইভ টিভি</h1>
       </div>
       <div class="hero-grid">
         <div class="player-wrap">
-          <div class="player" id="player">
-            <div class="player-empty">
-              <div class="ico">📺</div>
-              <b>শীঘ্রই লাইভ শুরু হবে</b>
-              <span>আমাদের সাথেই থাকুন — ম্যাচ শুরু হলে এখানেই লাইভ দেখুন</span>
-            </div>
-          </div>
+          <div class="player" id="player"><div class="sk sk-player" aria-hidden="true"></div></div>
         </div>
-        <aside class="matches-panel" id="matches" aria-live="polite"></aside>
+        <aside class="matches-panel" id="matches" aria-live="polite"><div class="mp-sk" aria-hidden="true"><i class="sk sk-l5"></i><div class="mp-sk-tabs"><i class="sk"></i><i class="sk"></i><i class="sk"></i></div><div class="sk sk-box1"></div><div class="sk sk-box1"></div><div class="sk sk-box1"></div></div></aside>
       </div>
     </div>
   </div>
@@ -55,7 +50,7 @@
           <button class="chip" data-filter="completed">সম্পন্ন</button>
         </div>
       </div>
-      <div class="grid" id="t-grid"><!--SSR_GRID--></div>
+      <div class="grid" id="t-grid"><!--SSR_GRID--><div class="card sk-card" aria-hidden="true"><div class="cover sk"></div><div class="card-body"><i class="sk sk-l5"></i><i class="sk sk-l4"></i><i class="sk sk-l2"></i></div></div><div class="card sk-card" aria-hidden="true"><div class="cover sk"></div><div class="card-body"><i class="sk sk-l5"></i><i class="sk sk-l4"></i><i class="sk sk-l2"></i></div></div><div class="card sk-card" aria-hidden="true"><div class="cover sk"></div><div class="card-body"><i class="sk sk-l5"></i><i class="sk sk-l4"></i><i class="sk sk-l2"></i></div></div></div>
       <div style="text-align:center;margin-top:28px"><a class="btn big" href="/tournaments">সব টুর্নামেন্ট দেখুন →</a></div>
     </div>
   </section>
@@ -105,7 +100,7 @@
   </section>
 </main>
 
-<footer id="site-footer"></footer>
+<footer id="site-footer" class="sk-footer" aria-hidden="true"><div class="container"><i class="sk sk-l3"></i><i class="sk sk-l4"></i><i class="sk sk-l4"></i></div></footer>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/js/config.js"></script>
 <script src="/js/data.js"></script>

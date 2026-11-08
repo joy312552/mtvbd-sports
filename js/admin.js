@@ -9,7 +9,7 @@
   const ICON = { "ফুটবল": "⚽", "ক্রিকেট": "🏏", "কাবাডি": "🤼" };
 
   const configured = C.SUPABASE_URL && C.SUPABASE_ANON_KEY && !/YOUR_/.test(C.SUPABASE_URL + C.SUPABASE_ANON_KEY);
-  let sb = null, user = null, tournaments = [], view = "settings";
+  let sb = null, user = null, tournaments = [], view = "dash";
 
   /* ইউটিউব চ্যানেলের লিংক — নতুন ফিক্সচার/ফলাফল সারিতে ডিফল্ট হিসেবে বসে (সেটিংস থেকে বদলানো যায়) */
   const DEFAULT_YT = "https://www.youtube.com/@mymensinghtvbd24";
@@ -82,28 +82,160 @@
     });
   }
 
-  /* ---------- shell ---------- */
+  /* ---------- shell (সাইডবার + কনটেন্ট) ---------- */
+  const NAV = [
+    ["dash", "🏠", "ড্যাশবোর্ড"], ["list", "🏆", "টুর্নামেন্ট"], ["fixtures", "📅", "ম্যাচ ও ফিক্সচার"], ["results", "🏁", "ফলাফল"],
+    ["teams", "👥", "দল ও খেলোয়াড়"], ["news", "📰", "নিউজ"], ["seo", "🔎", "SEO ও গুগল"], ["settings", "⚙️", "লাইভ ও সেটিংস"]
+  ];
+  let dirty = false;
   function renderShell() {
     root.innerHTML = `
-    <header class="adm-top"><div class="adm-brand">📡 MTVBD <b>SPORTS</b><small>অ্যাডমিন</small></div>
-      <div class="adm-user"><span>${esc(user.email)}</span><button class="btn small ghost" id="logout">লগআউট</button></div></header>
-    <nav class="adm-tabs">
-      <button data-v="settings">📺 লাইভ ও সেটিংস</button>
-      <button data-v="list">🏆 টুর্নামেন্ট</button>
-      <button data-v="results">🏁 ফলাফল</button>
-      <button data-v="seo">🔎 SEO ও গুগল</button>
-      <a href="/" target="_blank" rel="noopener">🌐 ওয়েবসাইট দেখুন ↗</a>
-    </nav>
-    <main class="adm-main" id="view"></main>`;
+    <div class="adm-layout">
+      <aside class="adm-side">
+        <div class="adm-brand">📡 MTVBD <b>SPORTS</b><small>অ্যাডমিন</small></div>
+        <nav class="adm-nav" aria-label="অ্যাডমিন মেনু">
+          ${NAV.map(([k, ic, l]) => `<button data-v="${k}"><span class="ic">${ic}</span><span class="lb">${l}</span></button>`).join("")}
+          <a href="/" target="_blank" rel="noopener"><span class="ic">🌐</span><span class="lb">ওয়েবসাইট ↗</span></a>
+        </nav>
+        <div class="adm-user"><span>${esc(user.email)}</span><button class="btn small ghost" id="logout">লগআউট</button></div>
+      </aside>
+      <div class="adm-content"><main class="adm-main" id="view"></main></div>
+    </div>`;
     $("#logout").addEventListener("click", () => sb.auth.signOut());
     loadChannel();
-    $$(".adm-tabs [data-v]").forEach(b => b.addEventListener("click", () => setView(b.dataset.v)));
-    setView(view === "edit" ? "list" : view);
+    $$(".adm-nav [data-v]").forEach(b => b.addEventListener("click", () => setView(b.dataset.v)));
+    setView(view === "edit" || !view ? "dash" : view);
   }
-  function setView(v) {
+  function setView(v, force) {
+    if (dirty && !force && !confirm("সেভ না করা পরিবর্তন আছে। না সেভ করেই ছেড়ে যাবেন?")) return;
+    dirty = false; closeModal();
+    const el = $("#view"); if (el) { el.oninput = null; el.onchange = null; }
     view = v;
-    $$(".adm-tabs [data-v]").forEach(b => b.classList.toggle("on", b.dataset.v === v));
-    if (v === "settings") renderSettings(); else if (v === "results") renderResults(); else if (v === "seo") renderSeo(); else renderList();
+    $$(".adm-nav [data-v]").forEach(b => b.classList.toggle("on", b.dataset.v === v));
+    const map = { dash: renderDash, list: renderList, fixtures: renderFixtures, results: renderResults, teams: renderTeams, news: renderNews, seo: renderSeo, settings: renderSettings };
+    (map[v] || renderDash)();
+    window.scrollTo({ top: 0 });
+  }
+  const watchDirty = () => { const el = $("#view"); el.oninput = el.onchange = () => { dirty = true; }; };
+
+  /* ---------- মোডাল ---------- */
+  let modalEl = null;
+  function closeModal() { if (modalEl) { modalEl.remove(); modalEl = null; document.body.classList.remove("no-scroll"); } }
+  function openModal({ title, body, buttons = [], wide }) {
+    closeModal();
+    const wrap = document.createElement("div"); wrap.className = "am";
+    wrap.innerHTML = `<div class="am-box ${wide ? "wide" : ""}" role="dialog" aria-modal="true"><div class="am-h"><h3>${title}</h3><button type="button" class="am-x" aria-label="বন্ধ">✕</button></div>
+      <div class="am-b">${body}</div><div class="am-f">${buttons.map((b, i) => `<button type="button" class="btn ${b.cls || ""}" data-bi="${i}">${b.label}</button>`).join("")}</div></div>`;
+    document.body.appendChild(wrap); document.body.classList.add("no-scroll"); modalEl = wrap;
+    const ctx = { el: wrap, q: s => $(s, wrap), close: closeModal };
+    wrap.addEventListener("mousedown", e => { if (e.target === wrap) closeModal(); });
+    $(".am-x", wrap).addEventListener("click", closeModal);
+    wrap.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+    $$("[data-bi]", wrap).forEach(b => b.addEventListener("click", async () => {
+      const bt = buttons[+b.dataset.bi]; busy(b, true, "সেভ হচ্ছে…");
+      try { await bt.onClick(ctx, b); } catch (err) { toast("সেভ হয়নি: " + errText(err), true); }
+      if (b.isConnected) busy(b, false);
+    }));
+    const first = $("input:not([type=hidden]),select,textarea", $(".am-b", wrap)); if (first) first.focus();
+    return ctx;
+  }
+
+  /* ---------- টুর্নামেন্ট বাছাই (ম্যাচ/ফলাফল/দল/নিউজ ট্যাবে এক) ---------- */
+  let selT = "";
+  const curT = () => { if (!tournaments.some(t => t.id === selT)) { const t = tournaments.find(x => x.status !== "completed") || tournaments[0]; selT = t ? t.id : ""; } return tournaments.find(t => t.id === selT); };
+  const tSel = (extra = "") => `<div class="tsel"><label for="tsel">🏆 টুর্নামেন্ট বেছে নিন</label>
+    <select id="tsel">${tournaments.map(t => `<option value="${esc(t.id)}" ${t.id === selT ? "selected" : ""}>${(ICON[t.sport] || "🏆")} ${esc(t.title)}</option>`).join("")}</select>${extra}</div>`;
+  const bindTSel = fn => $("#tsel").addEventListener("change", e => {
+    if (dirty && !confirm("সেভ না করা পরিবর্তন আছে। না সেভ করেই অন্য টুর্নামেন্টে যাবেন?")) { e.target.value = selT; return; }
+    dirty = false; selT = e.target.value; fn();
+  });
+  const noT = el => { el.innerHTML = `<div class="box2 empty-box"><div class="big">🏆</div><h3>এখনো কোনো টুর্নামেন্ট নেই</h3><p class="hint">আগে একটি টুর্নামেন্ট যোগ করুন।</p><button class="btn" id="mk">+ নতুন টুর্নামেন্ট</button></div>`; $("#mk").addEventListener("click", () => renderEditor(null)); };
+  async function loadOrFail(el) {
+    el.innerHTML = skel();
+    try { await loadTournaments(); return true; } catch (e) { el.innerHTML = `<div class="warn">${esc(errText(e))}</div>`; return false; }
+  }
+  const skel = () => `<div class="sk-box"><i></i><i></i><i></i></div><div class="sk-box"><i></i><i></i></div>`;
+  async function saveCol(t, col, val) {
+    const { error } = await sb.from("tournaments").update({ [col]: val }).eq("id", t.id);
+    if (error) throw error; t[col] = val;
+  }
+  const bnToday = () => { const d = new Date(Date.now() + MT.OFFSET); return MT.fmtDate(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate()); };
+  const arr = x => (Array.isArray(x) ? x : []);
+  const dayTxt = f => [f.date && String(f.date).replace(/\s*\(.*\)/, ""), f.time].filter(Boolean).join(" • ");
+  const statTag = (f, sport) => {
+    const i = MT.matchInfo(f, sport, Date.now());
+    return i.status === "live" ? `<span class="rtag live">🔴 লাইভ</span>` : i.hasRes ? `<span class="rtag done">✅ শেষ</span>` : i.status === "completed" ? `<span class="rtag warn">⏱ ফলাফল বাকি</span>` : i.postponed ? `<span class="rtag">⏸ স্থগিত</span>` : `<span class="rtag">আসন্ন</span>`;
+  };
+
+  /* ---------- 🏠 ড্যাশবোর্ড ---------- */
+  async function renderDash() {
+    const el = $("#view");
+    el.innerHTML = skel();
+    let S = {};
+    try {
+      await loadTournaments();
+      const { data } = await sb.from("settings").select("*"); S = Object.fromEntries((data || []).map(r => [r.key, r.value]));
+    } catch (e) { el.innerHTML = `<div class="warn">${esc(errText(e))}</div>`; return; }
+    const now = Date.now(), all = [];
+    tournaments.forEach(t => arr(t.fixtures).forEach((f, i) => { if (f && f.home) all.push(Object.assign({ t, f, i }, MT.matchInfo(f, t.sport, now))); }));
+    const live = all.filter(m => m.status === "live");
+    const pending = all.filter(m => m.status === "completed" && !m.hasRes).sort((a, b) => (b.start || 0) - (a.start || 0));
+    const upcoming = all.filter(m => m.status === "upcoming" && !m.postponed).sort((a, b) => (a.start ?? 9e15) - (b.start ?? 9e15));
+    const dd = ms => Math.floor((ms + MT.OFFSET) / 864e5), today = all.filter(m => m.start != null && dd(m.start) === dd(now));
+    const rowM = (m, withScore) => `<div class="dm" data-t="${esc(m.t.id)}" data-i="${m.i}">
+      <div class="dm-main"><b>${esc(m.f.home)} <em>বনাম</em> ${esc(m.f.away)}</b><small>${ICON[m.t.sport] || "🏆"} ${esc(m.t.title)} • ${esc(dayTxt(m.f))}</small></div>
+      ${withScore ? `<div class="dm-score"><input data-s="h" inputmode="numeric" placeholder="০" aria-label="${esc(m.f.home)}"><span>-</span><input data-s="a" inputmode="numeric" placeholder="০" aria-label="${esc(m.f.away)}"><button class="btn small" data-sv>✔ সেভ</button></div>` : statTag(m.f, m.t.sport)}</div>`;
+    el.innerHTML = `
+    <div class="page-h"><h2>🏠 ড্যাশবোর্ড</h2><span class="muted">${esc(bnToday())}</span></div>
+    <div class="stats">
+      <div class="stat"><b>${MT.toBn(tournaments.length)}</b><span>টুর্নামেন্ট</span></div>
+      <div class="stat ${live.length ? "hot" : ""}"><b>${MT.toBn(live.length)}</b><span>🔴 এখন লাইভ ম্যাচ</span></div>
+      <div class="stat"><b>${MT.toBn(today.length)}</b><span>আজকের ম্যাচ</span></div>
+      <div class="stat ${pending.length ? "warn" : ""}"><b>${MT.toBn(pending.length)}</b><span>ফলাফল বাকি</span></div>
+      <div class="stat"><b>${MT.toBn(upcoming.length)}</b><span>আসন্ন ম্যাচ</span></div>
+    </div>
+    <div class="dash-grid">
+      <div class="box2"><h3>📺 লাইভ টিভির লিংক</h3><p class="hint">ইউটিউব লাইভ লিংক বসিয়ে চালু করুন; ১ মিনিটের মধ্যে ওয়েবসাইটে চালু হবে।</p>
+        <div class="inline-form"><input id="d-live" value="${esc(S.live_url || "")}" placeholder="https://www.youtube.com/watch?v=..."><button class="btn" id="d-on">▶ চালু</button><button class="btn danger" id="d-off">⏹ বন্ধ</button></div>
+        <div class="err" id="d-err"></div>
+        <div class="muted">${S.live_url ? "🟢 এখন লাইভ চালু আছে" : "⚪ এখন লাইভ বন্ধ"}</div></div>
+      <div class="box2"><h3>⚡ দ্রুত কাজ</h3><div class="qa">
+        <button class="btn dark" data-go="newt">+ নতুন টুর্নামেন্ট</button>
+        <button class="btn ghost" data-go="fixtures">📅 ম্যাচ যোগ/এডিট</button>
+        <button class="btn ghost" data-go="results">🏁 ফলাফল দিন</button>
+        <button class="btn ghost" data-go="teams">👥 দল ও খেলোয়াড়</button>
+        <button class="btn ghost" data-go="news">📰 নিউজ দিন</button>
+        <button class="btn ghost" data-go="seo">🔎 SEO ও গুগল</button></div></div>
+    </div>
+    ${live.length ? `<div class="box2"><h3>🔴 এখন লাইভ</h3>${live.map(m => rowM(m, true)).join("")}<p class="hint" style="margin:8px 0 0">ম্যাচ শেষ হলে স্কোর লিখে ✔ সেভ চাপলে ম্যাচ সম্পন্ন হয়ে যাবে।</p></div>` : ""}
+    <div class="box2"><h3>⏱ ফলাফল বাকি (${MT.toBn(pending.length)})</h3>${pending.length ? pending.slice(0, 8).map(m => rowM(m, true)).join("") + (pending.length > 8 ? `<p class="hint" style="margin:8px 0 0">আরও ${MT.toBn(pending.length - 8)}টি আছে — "🏁 ফলাফল" ট্যাবে দেখুন।</p>` : "") : `<p class="hint">সব ম্যাচের ফলাফল দেওয়া আছে। 👏</p>`}</div>
+    <div class="box2"><h3>📅 পরের ম্যাচগুলো</h3>${upcoming.length ? upcoming.slice(0, 6).map(m => rowM(m, false)).join("") : `<p class="hint">কোনো আসন্ন ম্যাচ নেই। "ম্যাচ ও ফিক্সচার" থেকে যোগ করুন।</p>`}</div>`;
+    const go = k => k === "newt" ? renderEditor(null) : setView(k);
+    $$("[data-go]").forEach(b => b.addEventListener("click", () => go(b.dataset.go)));
+    const setLive = async (v, btn, msg) => {
+      if (v && !ytId(v)) { $("#d-err").textContent = "সঠিক ইউটিউব লিংক দিন।"; return; }
+      $("#d-err").textContent = ""; busy(btn, true, "…");
+      const { error } = await sb.from("settings").upsert([{ key: "live_url", value: v }], { onConflict: "key" });
+      busy(btn, false); error ? toast(errText(error), true) : (toast(msg), renderDash());
+    };
+    $("#d-on").addEventListener("click", e => setLive($("#d-live").value.trim(), e.target, "✅ লাইভ চালু হয়েছে"));
+    $("#d-off").addEventListener("click", e => { $("#d-live").value = ""; setLive("", e.target, "লাইভ বন্ধ করা হয়েছে"); });
+    $$(".dm [data-sv]").forEach(b => b.addEventListener("click", async () => {
+      const row = b.closest(".dm"), h = $('[data-s="h"]', row).value.trim(), a = $('[data-s="a"]', row).value.trim();
+      if (h === "" || a === "") { toast("দুই দলের স্কোরই লিখুন", true); return; }
+      busy(b, true, "…");
+      try { await patchFixture(row.dataset.t, +row.dataset.i, { homeScore: h, awayScore: a }); toast("✅ ফলাফল সেভ হয়েছে"); renderDash(); }
+      catch (err) { toast("সেভ হয়নি: " + errText(err), true); busy(b, false); }
+    }));
+  }
+  /* একটি ম্যাচের কিছু ঘর বদলায় — সর্বশেষ ফিক্সচার এনে, যাতে অন্য তথ্য নষ্ট না হয় */
+  async function patchFixture(tid, idx, patch) {
+    const { data, error } = await sb.from("tournaments").select("fixtures").eq("id", tid).single();
+    if (error) throw error;
+    const fx = arr(data.fixtures); if (!fx[idx]) throw new Error("ম্যাচটি পাওয়া যায়নি, পেইজ রিফ্রেশ করুন।");
+    Object.entries(patch).forEach(([k, v]) => { const s = String(v ?? "").trim(); if (s) fx[idx][k] = s; else delete fx[idx][k]; });
+    const up = await sb.from("tournaments").update({ fixtures: fx }).eq("id", tid);
+    if (up.error) throw up.error;
   }
 
   /* ---------- settings ---------- */
@@ -175,36 +307,76 @@
     });
   }
 
+
   /* ---------- 🔎 SEO ও গুগল ---------- */
+  const clipTxt = (s, n) => { s = String(s || "").replace(/\s+/g, " ").trim(); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
+  const tagContent = v => { v = String(v || "").trim(); const m = v.match(/content\s*=\s*["']([^"']+)["']/i); return m ? m[1] : v; };
+  async function seoHealth(S, box) {
+    const get = async p => { try { const r = await fetch(p + (p.includes("?") ? "&" : "?") + "_=" + Date.now(), { cache: "no-store" }); return { ok: r.ok, status: r.status, text: await r.text() }; } catch (e) { return { ok: false, status: 0, text: "" }; } };
+    box.innerHTML = `<div class="muted">পরীক্ষা চলছে…</div>`;
+    const [home, sm, rb] = await Promise.all([get("/"), get("/sitemap.xml"), get("/robots.txt")]);
+    const out = [], add = (st, t, hint) => out.push([st, t, hint]);
+    const ssr = /rel="canonical"/.test(home.text) && /property="og:title"/.test(home.text);
+    ssr ? add("ok", "হোমপেইজে SEO ট্যাগ (টাইটেল, canonical, শেয়ার প্রিভিউ) চালু আছে")
+      : add("no", "হোমপেইজে SEO ট্যাগ পাওয়া যায়নি", "গিটহাবে পুরোনো index.html মুছে দিন এবং api ফোল্ডার, pages ফোল্ডার ও vercel.json আপলোড হয়েছে কি না দেখুন। তারপর Vercel-এ নতুন ডিপ্লয় শেষ হওয়ার পর আবার পরীক্ষা করুন।");
+    /<script type="application\/ld\+json">/.test(home.text) ? add("ok", "Structured data (JSON-LD) আছে") : add("no", "Structured data নেই", "ওপরের পয়েন্টের মতোই api/pages ঠিকমতো ডিপ্লয় হয়েছে কি না দেখুন।");
+    const m = home.text.match(/name="google-site-verification" content="([^"]+)"/), want = tagContent(S.gsc_verify);
+    if (m) add(want && m[1] !== want ? "warn" : "ok", "সার্চ কনসোল ভেরিফিকেশন ট্যাগ হোমপেইজে আছে" + (want && m[1] !== want ? " (কিন্তু সেভ করা কোডের সাথে মেলে না)" : ""));
+    else add(want ? "no" : "warn", want ? "সেভ করা সার্চ কনসোল কোড হোমপেইজে আসেনি" : "সার্চ কনসোল ভেরিফিকেশন কোড দেওয়া হয়নি", want ? "সেভ করার পর ২–৩ মিনিট অপেক্ষা করে আবার পরীক্ষা করুন। না হলে নিচের \"HTML ফাইল\" পদ্ধতিতে ভেরিফাই করুন।" : "");
+    if (S.gsc_file) { const f = await get("/" + S.gsc_file); f.ok && /google-site-verification/.test(f.text) ? add("ok", "সার্চ কনসোলের HTML ফাইল পদ্ধতি চালু আছে (" + S.gsc_file + ")") : add("no", "HTML ফাইল পদ্ধতি কাজ করছে না: /" + S.gsc_file, "ফাইলের নাম ঠিক আছে কি না দেখুন; সেভ করে ২–৩ মিনিট অপেক্ষা করুন।"); }
+    const ga = home.text.match(/googletagmanager\.com\/gtag\/js\?id=([\w-]+)/);
+    ga ? add("ok", "গুগল অ্যানালিটিক্স চালু আছে (" + ga[1] + ")") : add("warn", "গুগল অ্যানালিটিক্স আইডি দেওয়া হয়নি", "ঐচ্ছিক, তবে কত দর্শক আসছে দেখতে দরকার।");
+    const n = (sm.text.match(/<loc>/g) || []).length;
+    sm.ok && n ? add("ok", `সাইটম্যাপ চালু আছে (${MT.toBn(n)}টি লিংক)`) : add("no", "sitemap.xml খুলছে না", "vercel.json ও api ফোল্ডার আপলোড হয়েছে কি না দেখুন।");
+    rb.ok && /Sitemap:/i.test(rb.text) ? add("ok", "robots.txt ঠিক আছে (সাইটম্যাপের লিংকসহ)") : add("no", "robots.txt ঠিক নেই", "vercel.json আপলোড হয়েছে কি না দেখুন।");
+    box.innerHTML = out.map(([s, t, h]) => `<div class="hc ${s}"><span>${s === "ok" ? "✔" : s === "no" ? "✖" : "⚠"}</span><div><b>${esc(t)}</b>${h ? `<small>${esc(h)}</small>` : ""}</div></div>`).join("");
+  }
   async function renderSeo() {
     const el = $("#view");
-    el.innerHTML = `<div class="boot">লোড হচ্ছে…</div>`;
+    el.innerHTML = skel();
     let S = {};
     try {
       const { data, error } = await sb.from("settings").select("*"); if (error) throw error;
       S = Object.fromEntries((data || []).map(r => [r.key, r.value]));
       await loadTournaments();
     } catch (e) { el.innerHTML = `<div class="warn">${esc(errText(e))}</div>`; return; }
-    const site = (S.site_url || "https://sports.mtvbd.com").replace(/\/+$/, "");
+    const site = (S.site_url || "https://sports.mtvbd.com").replace(/\/+$/, ""), host = site.replace(/^https?:\/\//, "");
+    const ov = t => { try { return JSON.parse(S["seo_t_" + t.id] || "{}") || {}; } catch (e) { return {}; } };
     const len = (v, a, b) => v.length >= a && v.length <= b;
     const audit = t => {
-      const fx = (t.fixtures || []).filter(f => f && f.home);
+      const o = ov(t), fx = arr(t.fixtures).filter(f => f && f.home);
       const checks = [
-        ["নামের দৈর্ঘ্য ১০–৭০ অক্ষর", len(String(t.title || ""), 10, 70)],
-        ["সংক্ষিপ্ত বর্ণনা ৭০–১৬০ অক্ষর (গুগলে যে লেখা দেখায়)", len(String(t.short || ""), 70, 160)],
-        ["কভার ছবি আছে (শেয়ার ও গুগল ইমেজে দেখায়)", !!String(t.image || "").trim()],
+        ["টুর্নামেন্টের নাম ১০–৭০ অক্ষরের", len(String(t.title || ""), 10, 70)],
+        ["বর্ণনা ৭০–১৬০ অক্ষরের (গুগলে যে লেখা দেখায়)", len(String(o.description || t.short || ""), 70, 160)],
+        ["কভার ছবি আছে (শেয়ার ও ইমেজ সার্চে দেখায়)", !!String(t.image || "").trim()],
         ["সারসংক্ষেপে কমপক্ষে ২ অনুচ্ছেদ", String(t.overview || "").split(/\n+/).filter(x => x.trim()).length >= 2],
         ["ভেন্যু দেওয়া আছে", !!String(t.venue || "").trim()],
         ["শুরুর তারিখ দেওয়া আছে ও বোঝা যায়", !!MT.parseDate(t.start_date)],
-        ["সব ফিক্সচারের তারিখ-সময় বোঝা যায়", !fx.length || fx.every(f => MT.parseDate(f.date) && MT.parseTime(f.time))],
-        ["দলের তালিকা আছে", (t.teams || []).length > 0],
-        ["কমপক্ষে ১টি নিউজ আছে", (t.news || []).length > 0]
+        ["সব ম্যাচের তারিখ-সময় বোঝা যায়", !fx.length || fx.every(f => MT.parseDate(f.date) && MT.parseTime(f.time))],
+        ["ম্যাচ ফিক্সচার আছে", fx.length > 0],
+        ["দলের তালিকা আছে", arr(t.teams).length > 0],
+        ["কমপক্ষে ১টি নিউজ আছে", arr(t.news).length > 0]
       ];
       return { checks, score: Math.round(checks.filter(c => c[1]).length / checks.length * 100) };
     };
+    const links = [
+      ["🔎 Google Search Console", "https://search.google.com/search-console"], ["📈 Google Analytics", "https://analytics.google.com"],
+      ["🗺 sitemap.xml", site + "/sitemap.xml"], ["🤖 robots.txt", site + "/robots.txt"],
+      ["🧪 Rich Results টেস্ট", "https://search.google.com/test/rich-results?url=" + encodeURIComponent(site + "/")],
+      ["⚡ PageSpeed", "https://pagespeed.web.dev/analysis?url=" + encodeURIComponent(site + "/")],
+      ["📱 Mobile-Friendly টেস্ট", "https://search.google.com/test/mobile-friendly?url=" + encodeURIComponent(site + "/")],
+      ["🔍 গুগলে ইনডেক্স দেখুন (site:)", "https://www.google.com/search?q=" + encodeURIComponent("site:" + host)],
+      ["🅱 Bing Webmaster", "https://www.bing.com/webmasters"], ["📣 Facebook শেয়ার ডিবাগার", "https://developers.facebook.com/tools/debug/?q=" + encodeURIComponent(site + "/")]
+    ];
     el.innerHTML = `
+    <div class="page-h"><h2>🔎 SEO ও গুগল</h2></div>
+    <div class="box2"><div class="bh"><h3>🩺 সাইট স্বাস্থ্য পরীক্ষা</h3><button class="btn small dark" id="hc-run">▶ এখনই পরীক্ষা করুন</button></div>
+      <p class="hint">সাইটম্যাপ, robots, সার্চ কনসোল কোড ও অ্যানালিটিক্স ঠিকমতো চালু আছে কি না যাচাই করে।</p><div id="hc"></div></div>
+
+    <div class="box2"><h3>🔗 প্রয়োজনীয় লিংক</h3><div class="linkgrid">${links.map(([l, u]) => `<a class="btn small ghost" href="${esc(u)}" target="_blank" rel="noopener">${l}</a>`).join("")}</div></div>
+
     <div class="box2"><h3>🔎 সাইটের SEO তথ্য</h3>
-      <p class="hint">এই তথ্য গুগলে সাইটের নাম ও বর্ণনা হিসেবে দেখানো হয়। ফাঁকা রাখলে ভালো একটি ডিফল্ট ব্যবহার হবে। প্রতিটি টুর্নামেন্ট, ফিক্সচার, ফলাফল, দল ও নিউজের পেইজের টাইটেল/বর্ণনা নিজে থেকেই টুর্নামেন্টের তথ্য থেকে তৈরি হয়।</p>
+      <p class="hint">ফাঁকা রাখলে ভালো ডিফল্ট ব্যবহার হবে। টুর্নামেন্ট, ম্যাচ, ফলাফল, দল ও নিউজের প্রতিটি পেইজের টাইটেল/বর্ণনা নিজে থেকেই তৈরি হয়।</p>
       <label class="f"><span>সাইটের মূল ঠিকানা (ডোমেইন)</span><input id="s-url" value="${esc(S.site_url || "")}" placeholder="https://sports.mtvbd.com"></label>
       <label class="f"><span>হোমপেইজের টাইটেল (৬০ অক্ষরের মধ্যে ভালো) <b id="c-t" class="cnt"></b></span><input id="s-title" value="${esc(S.seo_title || "")}" placeholder="MTVBD Sports — ময়মনসিংহ টিভি বিডি স্পোর্টস | লাইভ টুর্নামেন্ট"></label>
       <label class="f"><span>হোমপেইজের বর্ণনা (১২০–১৬০ অক্ষর) <b id="c-d" class="cnt"></b></span><textarea id="s-desc" style="min-height:80px" placeholder="ময়মনসিংহ ও আশেপাশের ক্রিকেট, ফুটবল, কাবাডিসহ সব টুর্নামেন্টের লাইভ স্ট্রিমিং…">${esc(S.seo_description || "")}</textarea></label>
@@ -215,43 +387,52 @@
       <button class="btn" id="seo-save">💾 সেভ করুন</button></div>
 
     <div class="box2"><h3>📈 গুগল অ্যানালিটিক্স ও সার্চ কনসোল</h3>
-      <p class="hint">শুধু আইডি/কোড বসান, সাইটের সব পেইজে নিজে থেকে যুক্ত হয়ে যাবে (কোড কপি-পেস্টের দরকার নেই)। সেভ করার পর ১–২ মিনিটের মধ্যে কাজ করবে।</p>
-      <label class="f"><span>গুগল অ্যানালিটিক্স মেজারমেন্ট আইডি (যেমন: G-ABCDE12345)</span><input id="s-ga" value="${esc(S.ga_id || "")}" placeholder="G-XXXXXXXXXX"></label>
-      <label class="f"><span>গুগল সার্চ কনসোল ভেরিফিকেশন কোড (HTML ট্যাগের content="…" এর ভেতরের লেখা)</span><input id="s-gsc" value="${esc(S.gsc_verify || "")}" placeholder="abcDEF123..."></label>
-      <label class="f"><span>Bing Webmaster ভেরিফিকেশন কোড (ঐচ্ছিক)</span><input id="s-bing" value="${esc(S.bing_verify || "")}" placeholder="ABCDEF1234..."></label>
+      <p class="hint">শুধু আইডি/কোড বসান — সাইটের সব পেইজে নিজে থেকে যুক্ত হবে। সেভের পর ১–২ মিনিটে কাজ করবে।</p>
+      <label class="f"><span>গুগল অ্যানালিটিক্স আইডি (যেমন: G-ABCDE12345)</span><input id="s-ga" value="${esc(S.ga_id || "")}" placeholder="G-XXXXXXXXXX"></label>
+      <label class="f"><span>সার্চ কনসোল HTML ট্যাগের কোড (পুরো ট্যাগ পেস্ট করলেও চলবে)</span><input id="s-gsc" value="${esc(S.gsc_verify || "")}" placeholder='<meta name="google-site-verification" content="..." />'></label>
+      <label class="f"><span>অথবা সার্চ কনসোল HTML ফাইলের নাম (যেমন: google1a2b3c4d5e6f7a8b.html) — ট্যাগে না হলে এটা ব্যবহার করুন</span><input id="s-gfile" value="${esc(S.gsc_file || "")}" placeholder="google1a2b3c4d5e6f7a8b.html"></label>
+      <label class="f"><span>Bing Webmaster কোড (ঐচ্ছিক)</span><input id="s-bing" value="${esc(S.bing_verify || "")}" placeholder="ABCDEF1234..."></label>
       <div class="err" id="g-err"></div>
       <button class="btn" id="g-save">💾 সেভ করুন</button></div>
 
-    <div class="box2"><h3>🚀 গুগলে সাইট যুক্ত করার ধাপ (একবারই করতে হবে)</h3>
-      <ol class="seo-steps">
-        <li><b>সার্চ কনসোলে যান:</b> <a href="https://search.google.com/search-console" target="_blank" rel="noopener">search.google.com/search-console</a> → "Add property" → <b>URL prefix</b> বেছে লিখুন <code>${esc(site)}/</code></li>
-        <li><b>ভেরিফাই করুন:</b> "HTML tag" পদ্ধতি বেছে নিন। যে ট্যাগ দেখাবে তার <code>content="…"</code> এর ভেতরের লেখাটুকু ওপরের "সার্চ কনসোল ভেরিফিকেশন কোড" ঘরে বসিয়ে সেভ করুন, তারপর সার্চ কনসোলে <b>Verify</b> চাপুন। (২–৩ মিনিট অপেক্ষা করুন)</li>
-        <li><b>সাইটম্যাপ জমা দিন:</b> সার্চ কনসোলের বাম মেনুতে <b>Sitemaps</b> → লিখুন <code>sitemap.xml</code> → Submit। সাইটম্যাপ নিজে থেকে আপডেট হয়, নতুন টুর্নামেন্ট যোগ করলে আর কিছু করতে হবে না।</li>
-        <li><b>দ্রুত ইনডেক্স:</b> উপরের সার্চ বারে হোমপেইজ ও প্রধান টুর্নামেন্টের লিংক বসিয়ে <b>"Request indexing"</b> চাপুন।</li>
-        <li><b>অ্যানালিটিক্স:</b> <a href="https://analytics.google.com" target="_blank" rel="noopener">analytics.google.com</a> → Admin → Create property → Web stream (${esc(site)}) → "G-" দিয়ে শুরু আইডি কপি করে ওপরে বসান।</li>
-        <li><b>লিংক বাড়ান (র‍্যাংকের জন্য সবচেয়ে কার্যকর):</b> ফেসবুক পেইজের "About"-এ, ইউটিউব চ্যানেলের বিবরণে ও প্রতিটি ভিডিওর ডেসক্রিপশনে ${esc(site)} লিংক দিন। প্রতিটি ম্যাচের পর ফলাফল ও নিউজ নিয়মিত আপডেট করুন।</li>
-      </ol>
-      <div class="actions">
-        <a class="btn small ghost" href="${esc(site)}/sitemap.xml" target="_blank" rel="noopener">🗺 সাইটম্যাপ দেখুন</a>
-        <a class="btn small ghost" href="${esc(site)}/robots.txt" target="_blank" rel="noopener">🤖 robots.txt</a>
-        <a class="btn small ghost" href="https://search.google.com/test/rich-results?url=${encodeURIComponent(site + "/")}" target="_blank" rel="noopener">🧪 Rich Results টেস্ট</a>
-        <a class="btn small ghost" href="https://pagespeed.web.dev/analysis?url=${encodeURIComponent(site + "/")}" target="_blank" rel="noopener">⚡ PageSpeed</a>
-        <a class="btn small ghost" href="https://www.google.com/search?q=${encodeURIComponent("site:" + site.replace(/^https?:\/\//, ""))}" target="_blank" rel="noopener">🔍 গুগলে ইনডেক্স দেখুন</a></div></div>
-
-    <div class="box2"><h3>✅ টুর্নামেন্ট অনুযায়ী SEO চেকলিস্ট</h3>
-      <p class="hint">যত বেশি ঘর সবুজ, গুগলে তত ভালো দেখাবে। লাল ঘরগুলো ঠিক করতে টুর্নামেন্ট এডিট করুন।</p>
-      ${tournaments.length ? tournaments.map(t => { const a = audit(t); return `<details class="seo-t"><summary><span class="sc ${a.score >= 80 ? "g" : a.score >= 55 ? "y" : "r"}">${a.score}%</span><b>${esc(t.title)}</b><a class="btn small ghost" data-edit="${esc(t.id)}">✏️ এডিট</a></summary>
-        <ul class="seo-chk">${a.checks.map(c => `<li class="${c[1] ? "ok" : "no"}">${c[1] ? "✔" : "✖"} ${c[0]}</li>`).join("")}</ul></details>`; }).join("") : `<div class="hint">এখনো কোনো টুর্নামেন্ট নেই।</div>`}</div>`;
+    <div class="box2"><h3>✅ টুর্নামেন্ট অনুযায়ী SEO</h3>
+      <p class="hint">প্রতিটি টুর্নামেন্টের গুগল টাইটেল/বর্ণনা নিজের মতো করে দিতে পারেন (ফাঁকা রাখলে নিজে থেকে তৈরি হবে)। সবুজ ঘর বাড়ালে স্কোর বাড়ে।</p>
+      ${tournaments.length ? tournaments.map(t => { const a = audit(t), o = ov(t); return `<details class="seo-t" data-id="${esc(t.id)}"><summary><span class="sc ${a.score >= 80 ? "g" : a.score >= 55 ? "y" : "r"}">${MT.toBn(a.score)}%</span><b>${esc(t.title)}</b></summary>
+        <div class="seo-body">
+          <div class="serp"><div class="serp-u">${esc(host)} › tournament › …</div><div class="serp-t" data-p="t"></div><div class="serp-d" data-p="d"></div></div>
+          <label class="f"><span>গুগল টাইটেল (ফাঁকা = "নাম | MTVBD Sports") <b class="cnt" data-c="t"></b></span><input data-k="title" value="${esc(o.title || "")}" placeholder="${esc(t.title)}"></label>
+          <label class="f"><span>গুগল বর্ণনা (ফাঁকা = সংক্ষিপ্ত বিবরণ) <b class="cnt" data-c="d"></b></span><textarea data-k="description" style="min-height:70px" placeholder="${esc(clipTxt(t.short, 160))}">${esc(o.description || "")}</textarea></label>
+          <label class="f"><span>অতিরিক্ত কিওয়ার্ড (কমা দিয়ে)</span><input data-k="keywords" value="${esc(o.keywords || "")}" placeholder="লাইভ স্কোর, ফিক্সচার"></label>
+          <label class="chk"><input type="checkbox" data-k="noindex" ${o.noindex ? "checked" : ""}> এই টুর্নামেন্ট গুগলে দেখাবেন না (noindex)</label>
+          <ul class="seo-chk">${a.checks.map(c => `<li class="${c[1] ? "ok" : "no"}">${c[1] ? "✔" : "✖"} ${c[0]}</li>`).join("")}</ul>
+          <div class="actions"><button class="btn small" data-tsave>💾 সেভ</button><button class="btn small ghost" data-edit>✏️ তথ্য এডিট করুন</button><a class="btn small ghost" href="${esc(site)}/tournament/${encodeURIComponent(t.id)}" target="_blank" rel="noopener">🌐 পেইজ দেখুন ↗</a></div>
+        </div></details>`; }).join("") : `<div class="hint">এখনো কোনো টুর্নামেন্ট নেই।</div>`}</div>`;
 
     const cnt = () => { $("#c-t").textContent = `(${$("#s-title").value.length})`; $("#c-d").textContent = `(${$("#s-desc").value.length})`; };
     cnt(); $("#s-title").addEventListener("input", cnt); $("#s-desc").addEventListener("input", cnt);
-    $$("[data-edit]").forEach(a => a.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); renderEditor(tournaments.find(x => x.id === a.dataset.edit)); }));
+    $("#hc-run").addEventListener("click", async e => { busy(e.target, true, "পরীক্ষা চলছে…"); await seoHealth(S, $("#hc")); busy(e.target, false); });
     async function save(rows, btn, ok) {
       busy(btn, true, "সেভ হচ্ছে…");
       const { error } = await sb.from("settings").upsert(rows, { onConflict: "key" });
       busy(btn, false);
-      error ? toast("সেভ হয়নি: " + errText(error), true) : toast(ok);
+      error ? toast("সেভ হয়নি: " + errText(error), true) : (rows.forEach(r => (S[r.key] = r.value)), toast(ok));
+      return !error;
     }
+    $$(".seo-t").forEach(d => {
+      const t = tournaments.find(x => x.id === d.dataset.id), g = k => $(`[data-k="${k}"]`, d);
+      const upd = () => {
+        const ti = g("title").value.trim() || `${t.title} | MTVBD Sports`, de = g("description").value.trim() || clipTxt(t.short || arr(String(t.overview || "").split(/\n+/))[0], 160);
+        $('[data-p="t"]', d).textContent = clipTxt(ti, 62); $('[data-p="d"]', d).textContent = clipTxt(de, 160) || "বর্ণনা নেই";
+        $('[data-c="t"]', d).textContent = `(${g("title").value.length})`; $('[data-c="d"]', d).textContent = `(${g("description").value.length})`;
+      };
+      upd(); d.addEventListener("input", upd);
+      $("[data-edit]", d).addEventListener("click", () => renderEditor(t));
+      $("[data-tsave]", d).addEventListener("click", e => {
+        const v = { title: g("title").value.trim(), description: g("description").value.trim(), keywords: g("keywords").value.trim(), noindex: g("noindex").checked };
+        Object.keys(v).forEach(k => { if (!v[k]) delete v[k]; });
+        save([{ key: "seo_t_" + t.id, value: JSON.stringify(v) }], e.target, "✅ সেভ হয়েছে (১–২ মিনিটে গুগল-পেইজে আসবে)");
+      });
+    });
     $("#seo-save").addEventListener("click", e => {
       const u = $("#s-url").value.trim().replace(/\/+$/, ""), og = $("#s-og").value.trim();
       if (u && !/^https:\/\/[^\s/]+$/i.test(u)) { $("#s-err").textContent = "ঠিকানা https:// দিয়ে শুরু হবে এবং শেষে / বা পেইজ নাম থাকবে না (যেমন: https://sports.mtvbd.com)।"; return; }
@@ -260,12 +441,14 @@
       save([{ key: "site_url", value: u }, { key: "seo_title", value: $("#s-title").value.trim() }, { key: "seo_description", value: $("#s-desc").value.trim() },
         { key: "seo_keywords", value: $("#s-kw").value.trim() }, { key: "og_image", value: og }], e.target, "✅ SEO তথ্য সেভ হয়েছে (১–২ মিনিটে সাইটে আসবে)");
     });
-    $("#g-save").addEventListener("click", e => {
-      const ga = $("#s-ga").value.trim(), gsc = $("#s-gsc").value.trim(), bing = $("#s-bing").value.trim();
+    $("#g-save").addEventListener("click", async e => {
+      const ga = $("#s-ga").value.trim(), gsc = tagContent($("#s-gsc").value), bing = tagContent($("#s-bing").value), gf = $("#s-gfile").value.trim().replace(/^\/+/, "");
       if (ga && !/^(G|GT|AW)-[A-Za-z0-9]{4,20}$/.test(ga)) { $("#g-err").textContent = "অ্যানালিটিক্স আইডি G- দিয়ে শুরু হতে হবে (যেমন G-ABCDE12345)।"; return; }
-      if ((gsc && !/^[\w-]{10,100}$/.test(gsc)) || (bing && !/^[\w-]{10,100}$/.test(bing))) { $("#g-err").textContent = "ভেরিফিকেশন কোডে শুধু অক্ষর, সংখ্যা, - ও _ থাকবে। শুধু content=\"…\" এর ভেতরের অংশ বসান, পুরো ট্যাগ নয়।"; return; }
+      if ((gsc && !/^[\w-]{10,100}$/.test(gsc)) || (bing && !/^[\w-]{10,100}$/.test(bing))) { $("#g-err").textContent = "ভেরিফিকেশন কোডটি বোঝা যায়নি। সার্চ কনসোলের দেখানো ট্যাগটি পুরো কপি করে পেস্ট করুন।"; return; }
+      if (gf && !/^google[a-z0-9]{10,40}\.html$/i.test(gf)) { $("#g-err").textContent = "ফাইলের নাম google দিয়ে শুরু হয়ে .html দিয়ে শেষ হবে (যেমন google1a2b3c4d5e6f7a8b.html)।"; return; }
       $("#g-err").textContent = "";
-      save([{ key: "ga_id", value: ga }, { key: "gsc_verify", value: gsc }, { key: "bing_verify", value: bing }], e.target, "✅ সেভ হয়েছে (১–২ মিনিটে সাইটে চালু হবে)");
+      const ok = await save([{ key: "ga_id", value: ga }, { key: "gsc_verify", value: gsc }, { key: "gsc_file", value: gf }, { key: "bing_verify", value: bing }], e.target, "✅ সেভ হয়েছে (১–২ মিনিটে সাইটে চালু হবে)");
+      if (ok) { $("#s-gsc").value = gsc; $("#s-bing").value = bing; $("#s-gfile").value = gf; }
     });
     $("#og-pick").addEventListener("click", () => $("#og-file").click());
     $("#og-file").addEventListener("change", async e => {
@@ -280,62 +463,68 @@
     });
   }
 
-  /* ---------- list ---------- */
+  /* ---------- 🏆 টুর্নামেন্ট ---------- */
   async function loadTournaments() {
     const { data, error } = await sb.from("tournaments").select("*").order("created_at", { ascending: false });
     if (error) throw error;
     tournaments = data || [];
   }
+  let tQ = "";
   async function renderList() {
     const el = $("#view");
-    el.innerHTML = `<div class="boot">লোড হচ্ছে…</div>`;
-    try { await loadTournaments(); } catch (e) { el.innerHTML = `<div class="warn">${esc(errText(e))}</div>`; return; }
+    if (!(await loadOrFail(el))) return;
     el.innerHTML = `
-    <div class="list-head"><h2>টুর্নামেন্ট (${tournaments.length})</h2><button class="btn" id="add">+ নতুন টুর্নামেন্ট</button></div>
-    ${tournaments.length ? tournaments.map(t => `
+    <div class="page-h"><h2>🏆 টুর্নামেন্ট (${MT.toBn(tournaments.length)})</h2><div class="ph-acts"><button class="btn" id="add">+ নতুন টুর্নামেন্ট</button></div></div>
+    <div class="filters"><input id="t-q" type="search" placeholder="🔍 টুর্নামেন্ট খুঁজুন" value="${esc(tQ)}"></div>
+    <div id="t-list"></div>`;
+    const draw = () => {
+      const q = tQ.trim().toLowerCase(), rows = tournaments.filter(t => !q || (t.title + " " + t.sport).toLowerCase().includes(q));
+      $("#t-list").innerHTML = rows.length ? rows.map(t => `
       <div class="t-row" data-id="${esc(t.id)}">
         <div class="thumb">${t.image ? `<img src="${esc(t.image)}" alt="">` : (ICON[t.sport] || "🏆")}</div>
-        <div class="info"><b>${esc(t.title)}</b><small>${esc(t.sport)}${t.start_date ? " • " + esc(t.start_date) : ""}</small></div>
+        <div class="info"><b>${esc(t.title)}</b><small>${esc(t.sport)}${t.start_date ? " • " + esc(t.start_date) : ""}</small>
+          <div class="chips"><button data-go="fixtures">📅 ${MT.toBn(arr(t.fixtures).length)} ম্যাচ</button><button data-go="teams">👥 ${MT.toBn(arr(t.teams).filter(x => typeof x !== "string" || !x.startsWith("#")).length)} দল</button><button data-go="news">📰 ${MT.toBn(arr(t.news).length)} নিউজ</button><button data-go="results">🏁 ফলাফল</button></div></div>
         <select data-status title="স্ট্যাটাস">${Object.entries(STATUS).map(([k, v]) => `<option value="${k}" ${t.status === k ? "selected" : ""}>${v}</option>`).join("")}</select>
-        <div class="acts"><button class="btn small dark" data-edit>✏️ এডিট</button><button class="btn small danger" data-del>🗑</button></div>
-      </div>`).join("") : `<div class="box2">এখনো কোনো টুর্নামেন্ট নেই। "+ নতুন টুর্নামেন্ট" চাপুন।</div>`}`;
-    $("#add").addEventListener("click", () => renderEditor(null));
-    $$(".t-row").forEach(row => {
-      const id = row.dataset.id, t = tournaments.find(x => x.id === id);
-      $("[data-edit]", row).addEventListener("click", () => renderEditor(t));
-      $("[data-del]", row).addEventListener("click", () => removeTournament(t));
-      $("[data-status]", row).addEventListener("change", async e => {
-        const { error } = await sb.from("tournaments").update({ status: e.target.value }).eq("id", id);
-        error ? toast(errText(error), true) : (t.status = e.target.value, toast("✅ স্ট্যাটাস বদলানো হয়েছে"));
+        <div class="acts"><button class="btn small dark" data-edit>✏️ তথ্য</button><button class="btn small danger" data-del>🗑</button></div>
+      </div>`).join("") : `<div class="box2 empty-box"><div class="big">🏆</div><p class="hint">${tournaments.length ? "কিছু পাওয়া যায়নি।" : "এখনো কোনো টুর্নামেন্ট নেই। \"+ নতুন টুর্নামেন্ট\" চাপুন।"}</p></div>`;
+      $$(".t-row").forEach(row => {
+        const id = row.dataset.id, t = tournaments.find(x => x.id === id);
+        $("[data-edit]", row).addEventListener("click", () => renderEditor(t));
+        $("[data-del]", row).addEventListener("click", () => removeTournament(t));
+        $$("[data-go]", row).forEach(b => b.addEventListener("click", () => { selT = id; setView(b.dataset.go); }));
+        $("[data-status]", row).addEventListener("change", async e => {
+          const { error } = await sb.from("tournaments").update({ status: e.target.value }).eq("id", id);
+          error ? toast(errText(error), true) : (t.status = e.target.value, toast("✅ স্ট্যাটাস বদলানো হয়েছে"));
+        });
       });
-    });
+    };
+    draw();
+    $("#t-q").addEventListener("input", e => { tQ = e.target.value; draw(); });
+    $("#add").addEventListener("click", () => renderEditor(null));
   }
   async function removeTournament(t) {
-    if (!confirm(`"${t.title}" টুর্নামেন্টটি স্থায়ীভাবে মুছে ফেলবেন?\nএটা আর ফেরত আনা যাবে না।`)) return;
+    if (!confirm(`"${t.title}" টুর্নামেন্টটি স্থায়ীভাবে মুছে ফেলবেন?\nএর সব ম্যাচ, দল ও নিউজসহ মুছে যাবে। এটা আর ফেরত আনা যাবে না।`)) return;
     const { error } = await sb.from("tournaments").delete().eq("id", t.id);
     if (error) { toast(errText(error), true); return; }
-    toast("টুর্নামেন্ট মুছে ফেলা হয়েছে"); renderList();
+    toast("টুর্নামেন্ট মুছে ফেলা হয়েছে"); dirty = false; setView("list", true);
   }
 
-
   /* ---------- 🏁 দ্রুত ফলাফল ---------- */
-  let resSel = "", resFilter = "pending", resQ = "";
+  let resFilter = "pending", resQ = "";
   async function renderResults() {
     const el = $("#view");
-    el.innerHTML = `<div class="boot">লোড হচ্ছে…</div>`;
-    try { await loadTournaments(); } catch (e) { el.innerHTML = `<div class="warn">${esc(errText(e))}</div>`; return; }
-    const list = tournaments.filter(t => Array.isArray(t.fixtures) && t.fixtures.length);
-    if (!list.length) { el.innerHTML = `<div class="box2"><h3>🏁 ফলাফল</h3><p class="hint">কোনো টুর্নামেন্টে এখনো ফিক্সচার নেই। আগে "🏆 টুর্নামেন্ট" থেকে ফিক্সচার যোগ করুন।</p></div>`; return; }
-    if (!list.some(t => t.id === resSel)) resSel = (list.find(t => t.status !== "completed") || list[0]).id;
-    const t = list.find(x => x.id === resSel);
+    if (!(await loadOrFail(el))) return;
+    if (!tournaments.length) return noT(el);
+    const t = curT();
+    if (!arr(t.fixtures).length) { el.innerHTML = `<div class="page-h"><h2>🏁 ম্যাচের ফলাফল</h2></div>${tSel()}<div class="box2 empty-box"><div class="big">📅</div><p class="hint">এই টুর্নামেন্টে এখনো কোনো ম্যাচ নেই। আগে "📅 ম্যাচ ও ফিক্সচার" থেকে ম্যাচ যোগ করুন।</p></div>`; bindTSel(renderResults); return; }
     const fx = JSON.parse(JSON.stringify(t.fixtures));
     const orig = JSON.stringify(fx);
     el.innerHTML = `
-    <div class="list-head"><h2>🏁 ম্যাচের ফলাফল</h2></div>
+    <div class="page-h"><h2>🏁 ম্যাচের ফলাফল</h2></div>
+    ${tSel(`<span class="muted">${MT.toBn(arr(t.fixtures).length)}টি ম্যাচ</span>`)}
     <div class="box2"><p class="hint">ম্যাচ শেষে দুই দলের গোল/রান লিখে সেভ করুন — ফলাফল ওই টুর্নামেন্টের "ফলাফল" ট্যাবে আর হোমপেইজের "সম্পন্ন" তালিকায় চলে যাবে। শুধু নোট লিখলেও (যেমন "ম্যাচ ড্র") ম্যাচ সম্পন্ন হয়। স্কোর মুছে দিলে ম্যাচ আবার সময় অনুযায়ী চলবে।</p>
-      <div class="grid2"><label class="f"><span>টুর্নামেন্ট</span><select id="rs-t">${list.map(x => `<option value="${esc(x.id)}" ${x.id === resSel ? "selected" : ""}>${esc(x.title)}</option>`).join("")}</select></label>
-        <label class="f"><span>দেখান</span><select id="rs-f"><option value="pending" ${resFilter === "pending" ? "selected" : ""}>ফলাফল বাকি</option><option value="done" ${resFilter === "done" ? "selected" : ""}>ফলাফল দেওয়া হয়েছে</option><option value="all" ${resFilter === "all" ? "selected" : ""}>সব ম্যাচ</option></select></label></div>
-      <label class="f"><span>খুঁজুন (দলের নাম, রাউন্ড, তারিখ)</span><input id="rs-q" value="${esc(resQ)}" placeholder="যেমন: আল হেলাল"></label></div>
+      <div class="grid2"><label class="f"><span>দেখান</span><select id="rs-f"><option value="pending" ${resFilter === "pending" ? "selected" : ""}>ফলাফল বাকি</option><option value="done" ${resFilter === "done" ? "selected" : ""}>ফলাফল দেওয়া হয়েছে</option><option value="all" ${resFilter === "all" ? "selected" : ""}>সব ম্যাচ</option></select></label></div>
+      <label class="f"><span>খুঁজুন (দলের নাম, রাউন্ড, তারিখ)</span><input id="rs-q" value="${esc(resQ)}" placeholder="যেমন: আল হেলাল"></label></div></div>
     <div id="rs-list"></div>
     <div class="savebar"><button class="btn" id="rs-save">💾 ফলাফল সেভ করুন</button></div>`;
     const draw = () => {
@@ -360,9 +549,9 @@
             <label class="f w3"><span>▶ ম্যাচ দেখার লিংক (ঐচ্ছিক)</span><input data-k="watch" value="${esc(f.watch ?? "")}" placeholder="https://www.youtube.com/watch?v=..."></label></div></div>`;
       }).join("") : `<div class="box2">এই তালিকায় কোনো ম্যাচ নেই।</div>`;
     };
-    draw();
+    draw(); watchDirty();
     $("#rs-list").addEventListener("input", e => { const k = e.target.dataset.k, c = e.target.closest(".rc"); if (k && c) fx[+c.dataset.i][k] = e.target.value; });
-    $("#rs-t").addEventListener("change", e => { resSel = e.target.value; renderResults(); });
+    bindTSel(renderResults);
     $("#rs-f").addEventListener("change", e => { resFilter = e.target.value; draw(); });
     $("#rs-q").addEventListener("input", e => { resQ = e.target.value; draw(); });
     $("#rs-save").addEventListener("click", async () => {
@@ -387,11 +576,124 @@
         if (n !== changed.length) throw new Error("ফিক্সচার ইতিমধ্যে বদলে গেছে। পেইজ রিফ্রেশ করে আবার চেষ্টা করুন।");
         const up = await sb.from("tournaments").update({ fixtures: fresh }).eq("id", t.id);
         if (up.error) throw up.error;
-        toast(`✅ ${n}টি ম্যাচের ফলাফল সেভ হয়েছে`);
+        toast(`✅ ${n}টি ম্যাচের ফলাফল সেভ হয়েছে`); dirty = false;
         renderResults();
       } catch (e) { toast("সেভ হয়নি: " + errText(e), true); }
       busy(b, false);
     });
+  }
+
+
+  /* ---------- 📅 ম্যাচ ও ফিক্সচার ---------- */
+  let fxQ = "", fxRound = "", fxSt = "", fxLimit = 30;
+  async function renderFixtures() {
+    const el = $("#view");
+    if (!(await loadOrFail(el))) return;
+    if (!tournaments.length) return noT(el);
+    const t = curT(), fx = arr(t.fixtures);
+    const rounds = [...new Set(fx.map(f => f.round || "").filter(Boolean))];
+    el.innerHTML = `
+    <div class="page-h"><h2>📅 ম্যাচ ও ফিক্সচার</h2><div class="ph-acts"><button class="btn ghost small" id="fx-sort" title="তারিখ-সময় অনুযায়ী সাজান">↕ সময় অনুযায়ী সাজান</button><button class="btn" id="fx-add">+ নতুন ম্যাচ</button></div></div>
+    ${tSel(`<span class="muted">${MT.toBn(fx.length)}টি ম্যাচ</span>`)}
+    <div class="filters">
+      <input id="fx-q" type="search" placeholder="🔍 দলের নাম বা রাউন্ড খুঁজুন" value="${esc(fxQ)}">
+      <select id="fx-r"><option value="">সব রাউন্ড/গ্রুপ</option>${rounds.map(r => `<option ${r === fxRound ? "selected" : ""}>${esc(r)}</option>`).join("")}</select>
+      <select id="fx-s"><option value="">সব অবস্থা</option><option value="upcoming" ${fxSt === "upcoming" ? "selected" : ""}>আসন্ন</option><option value="live" ${fxSt === "live" ? "selected" : ""}>লাইভ</option><option value="completed" ${fxSt === "completed" ? "selected" : ""}>সম্পন্ন</option><option value="pending" ${fxSt === "pending" ? "selected" : ""}>ফলাফল বাকি</option></select>
+    </div>
+    <div id="fx-list"></div>`;
+    bindTSel(renderFixtures);
+    const draw = () => {
+      const q = fxQ.trim().toLowerCase(), now = Date.now();
+      const rows = fx.map((f, i) => ({ f, i, info: MT.matchInfo(f, t.sport, now) })).filter(({ f, info }) => {
+        if (fxRound && (f.round || "") !== fxRound) return false;
+        if (fxSt === "pending") { if (!(info.status === "completed" && !info.hasRes)) return false; }
+        else if (fxSt && info.status !== fxSt) return false;
+        return !q || [f.home, f.away, f.round, f.no, f.venue, f.date].join(" ").toLowerCase().includes(q);
+      });
+      const shown = rows.slice(0, fxLimit); let last = null, html = "";
+      shown.forEach(({ f, i, info }) => {
+        const r = f.round || "";
+        if (r !== last) { html += `<div class="fx-round">${esc(r || "রাউন্ড ছাড়া")}</div>`; last = r; }
+        html += `<div class="fx-row" data-i="${i}">
+          <div class="fx-no">${esc(f.no || MT.toBn(i + 1))}</div>
+          <div class="fx-main"><b>${esc(f.home)} <em>${MT.hasResult(f) && f.homeScore !== undefined ? esc(MT.scoreText(f)) : "বনাম"}</em> ${esc(f.away)}</b>
+            <small>📅 ${esc(dayTxt(f) || "তারিখ নেই")}${f.venue ? " • 📍 " + esc(f.venue) : ""}</small></div>
+          ${statTag(f, t.sport)}
+          <div class="fx-acts"><button data-ed title="এডিট">✏️</button><button data-dup title="কপি করে নতুন">⧉</button><button data-rm title="মুছুন">🗑</button></div></div>`;
+      });
+      $("#fx-list").innerHTML = rows.length ? html + (rows.length > shown.length ? `<button class="btn ghost more" id="fx-more">আরও ${MT.toBn(rows.length - shown.length)}টি দেখান ↓</button>` : "")
+        : `<div class="box2 empty-box"><div class="big">📅</div><p class="hint">${fx.length ? "এই ফিল্টারে কোনো ম্যাচ নেই।" : "এখনো কোনো ম্যাচ নেই। \"+ নতুন ম্যাচ\" চাপুন।"}</p></div>`;
+    };
+    draw();
+    $("#fx-q").addEventListener("input", e => { fxQ = e.target.value; fxLimit = 30; draw(); });
+    $("#fx-r").addEventListener("change", e => { fxRound = e.target.value; fxLimit = 30; draw(); });
+    $("#fx-s").addEventListener("change", e => { fxSt = e.target.value; fxLimit = 30; draw(); });
+    $("#fx-add").addEventListener("click", () => matchModal(t, null, {}, renderFixtures));
+    $("#fx-sort").addEventListener("click", async e => {
+      if (!confirm("সব ম্যাচ তারিখ-সময় অনুযায়ী সাজানো হবে। ঠিক আছে?")) return;
+      const key = f => { const i = MT.matchInfo(f, t.sport, 0); return i.start == null ? 9e15 : i.start; };
+      const sorted = fx.map((f, i) => [f, i]).sort((a, b) => key(a[0]) - key(b[0]) || a[1] - b[1]).map(x => x[0]);
+      busy(e.target, true, "…");
+      try { await saveCol(t, "fixtures", sorted); toast("✅ সাজানো হয়েছে"); renderFixtures(); } catch (err) { toast(errText(err), true); busy(e.target, false); }
+    });
+    $("#fx-list").addEventListener("click", async e => {
+      if (e.target.closest("#fx-more")) { fxLimit += 40; draw(); return; }
+      const row = e.target.closest(".fx-row"), b = e.target.closest("button"); if (!row) return;
+      const i = +row.dataset.i;
+      if (b && b.hasAttribute("data-rm")) {
+        if (!confirm(`"${fx[i].home} বনাম ${fx[i].away}" ম্যাচটি মুছে ফেলবেন?`)) return;
+        const next = fx.filter((_, k) => k !== i);
+        try { await saveCol(t, "fixtures", next); toast("ম্যাচ মুছে ফেলা হয়েছে"); renderFixtures(); } catch (err) { toast(errText(err), true); }
+      } else if (b && b.hasAttribute("data-dup")) {
+        const c = JSON.parse(JSON.stringify(fx[i])); ["homeScore", "awayScore", "resultNote", "watch", "state"].forEach(k => delete c[k]); delete c.no; delete c.home; delete c.away;
+        matchModal(t, null, c, renderFixtures);
+      } else matchModal(t, i, {}, renderFixtures);
+    });
+  }
+  /* ম্যাচ যোগ/এডিট পপআপ। idx == null হলে নতুন (preset: আগের ম্যাচের রাউন্ড/তারিখ/ভেন্যু ইত্যাদি) */
+  function matchModal(t, idx, preset, done) {
+    const fx = arr(t.fixtures), isNew = idx == null;
+    const f = isNew ? Object.assign({ venue: t.venue || "", video: ytChannel }, preset) : JSON.parse(JSON.stringify(fx[idx]));
+    const teamNames = [...new Set(fx.flatMap(x => [x.home, x.away]).concat((t.teams || []).map(x => (typeof x === "string" ? (x.startsWith("#") ? "" : x) : x && x.name))).filter(Boolean))];
+    const rounds = [...new Set(fx.map(x => x.round).filter(Boolean))];
+    const fld = (l, n, v, cls = "", ph = "", extra = "") => `<label class="f ${cls}"><span>${l}</span><input name="${n}" value="${esc(v ?? "")}" placeholder="${esc(ph)}" ${extra}></label>`;
+    const body = `<datalist id="dl-teams">${teamNames.map(n => `<option value="${esc(n)}">`).join("")}</datalist><datalist id="dl-rounds">${rounds.map(n => `<option value="${esc(n)}">`).join("")}</datalist>
+      <div class="row-grid">
+        ${fld("প্রথম দল *", "home", f.home, "w3", "আল হেলাল এসি", 'list="dl-teams"')}
+        ${fld("দ্বিতীয় দল *", "away", f.away, "w3", "পাঁচবাগ স্পোর্টিং ক্লাব", 'list="dl-teams"')}
+        <label class="f w3"><span>📅 তারিখ ও সময় (বেছে নিন)</span><input type="datetime-local" name="_pick" value="${MT.toPicker(f.date, f.time)}"></label>
+        ${fld("রাউন্ড / গ্রুপ", "round", f.round, "w3", "প্রথম রাউন্ড / গ্রুপ ‘এ’", 'list="dl-rounds"')}
+        ${fld("তারিখ (লেখা)", "date", f.date, "w3", "৬ নভেম্বর, ২০২৬ (শুক্রবার)")}
+        ${fld("সময় (লেখা)", "time", f.time, "w3", "দুপুর ২:৪৫ টা")}
+        <div class="w6 dt-note" id="m-warn"></div>
+        ${fld("ম্যাচ নং", "no", f.no, "w3", "ম্যাচ ০১")}
+        ${fld("ভেন্যু / মাঠ", "venue", f.venue, "w3", "ময়মনসিংহ জেলা স্টেডিয়াম")}
+        ${fld("▶ ভিডিও বাটনের লিংক (ম্যাচের লাইভ/ভিডিও লিংক; না বদলালে চ্যানেলে যাবে)", "video", f.video, "w6", "https://www.youtube.com/watch?v=...")}
+        <label class="f w3"><span>ম্যাচের অবস্থা</span><select name="state"><option value="">স্বয়ংক্রিয় (সময় দেখে)</option><option value="live" ${f.state === "live" ? "selected" : ""}>🔴 এখনই লাইভ দেখান</option><option value="postponed" ${f.state === "postponed" ? "selected" : ""}>⏸ স্থগিত</option></select></label>
+        ${fld("ম্যাচ চলার সময় (মিনিট, ঐচ্ছিক)", "dur", f.dur, "w3", "ফুটবল ১২০, ক্রিকেট ৪৮০")}
+        ${fld("রাউন্ডের নোট (ঐচ্ছিক)", "note", f.note, "w6", "যেমন: এই রাউন্ডে অফ: ...")}
+      </div>`;
+    const warn = () => { const c = ctx.el, d = $('[name="date"]', c).value, tm = $('[name="time"]', c).value; $("#m-warn", c).innerHTML = (d || tm) && !(MT.parseDate(d) && MT.parseTime(tm)) ? `<small class="dt-warn">⚠ তারিখ/সময় বোঝা যায়নি — ম্যাচ নিজে থেকে লাইভ হবে না। ওপরের পিকার ব্যবহার করুন।</small>` : ""; };
+    async function save(c, again) {
+      const g = n => $(`[name="${n}"]`, c.el).value.trim();
+      if (!g("home") || !g("away")) { toast("দুই দলের নামই দিন", true); return; }
+      if (g("video") && !/^https?:\/\//i.test(g("video"))) { toast("ভিডিও লিংক http:// বা https:// দিয়ে শুরু হতে হবে", true); return; }
+      const o = isNew ? {} : JSON.parse(JSON.stringify(fx[idx]));
+      ["home", "away", "round", "date", "time", "no", "venue", "video", "state", "dur", "note"].forEach(k => { const v = g(k); if (v) o[k] = v; else delete o[k]; });
+      const next = fx.slice(); if (isNew) next.push(o); else next[idx] = o;
+      await saveCol(t, "fixtures", next);
+      toast(isNew ? "✅ ম্যাচ যোগ হয়েছে" : "✅ সেভ হয়েছে");
+      if (again) { const p = { round: o.round, date: o.date, time: o.time, venue: o.venue, video: o.video }; c.close(); done(); matchModal(t, null, p, done); }
+      else { c.close(); done(); }
+    }
+    const ctx = openModal({ title: isNew ? "+ নতুন ম্যাচ" : "✏️ ম্যাচ এডিট", body, wide: true,
+      buttons: [{ label: "বাতিল", cls: "ghost", onClick: c => c.close() }].concat(isNew ? [{ label: "💾 সেভ করে আরেকটি", cls: "dark", onClick: c => save(c, true) }] : [])
+        .concat([{ label: "💾 সেভ করুন", onClick: c => save(c, false) }]) });
+    ctx.el.addEventListener("input", e => {
+      if (e.target.name === "_pick") { const r = MT.fromPicker(e.target.value); if (r) { $('[name="date"]', ctx.el).value = r.date; $('[name="time"]', ctx.el).value = r.time; } }
+      warn();
+    });
+    warn();
   }
 
   /* ---------- repeatable rows ---------- */
@@ -620,23 +922,96 @@
     draw();
   }
 
-  /* ---------- editor ---------- */
+
+  /* ---------- 👥 দল ও খেলোয়াড় ---------- */
+  async function renderTeams() {
+    const el = $("#view");
+    if (!(await loadOrFail(el))) return;
+    if (!tournaments.length) return noT(el);
+    const t = curT(), tmArr = teamsToEditor(t.teams);
+    el.innerHTML = `
+    <div class="page-h"><h2>👥 দল ও খেলোয়াড়</h2></div>
+    ${tSel(`<span class="muted">${MT.toBn(tmArr.length)}টি দল</span>`)}
+    <div class="box2"><p class="hint">দল যোগ করুন। যেকোনো দলে ক্লিক করে ভেতরে ঢুকলে কোচ, পরিচিতি, ফোন/ফেসবুক ও খেলোয়াড়দের তালিকা (ছবিসহ) দিতে পারবেন — সবই ঐচ্ছিক।</p><div id="tm"></div></div>
+    <div class="savebar"><span class="sb-note" id="sb-note"></span><button class="btn" id="tm-save">💾 দল ও খেলোয়াড় সেভ করুন</button></div>`;
+    bindTSel(renderTeams);
+    teamEditor($("#tm"), tmArr); watchDirty();
+    $("#tm").addEventListener("click", e => { if (e.target.closest("button")) dirty = true; });
+    $("#tm").addEventListener("change", () => { dirty = true; });
+    $("#tm-save").addEventListener("click", async e => {
+      const badFb = tmArr.find(x => String(x.facebook || "").trim() && !/^https?:\/\//i.test(String(x.facebook).trim()));
+      if (badFb) { toast(`"${badFb.name}" দলের ফেসবুক লিংক http:// বা https:// দিয়ে শুরু হতে হবে`, true); return; }
+      busy(e.target, true, "সেভ হচ্ছে…");
+      try { await saveCol(t, "teams", teamsFromEditor(tmArr)); dirty = false; toast("✅ দল ও খেলোয়াড় সেভ হয়েছে"); renderTeams(); }
+      catch (err) { toast("সেভ হয়নি: " + errText(err), true); busy(e.target, false); }
+    });
+  }
+
+  /* ---------- 📰 নিউজ ---------- */
+  async function renderNews() {
+    const el = $("#view");
+    if (!(await loadOrFail(el))) return;
+    if (!tournaments.length) return noT(el);
+    const t = curT(), list = arr(t.news);
+    el.innerHTML = `
+    <div class="page-h"><h2>📰 নিউজ</h2><div class="ph-acts"><button class="btn" id="nw-add">+ নতুন নিউজ</button></div></div>
+    ${tSel(`<span class="muted">${MT.toBn(list.length)}টি নিউজ</span>`)}
+    <div id="nw-list">${list.length ? list.map((n, i) => `<div class="nw-row" data-i="${i}">
+        <div class="fx-main"><b>${esc(n.title || "শিরোনাম নেই")}</b><small>${esc(n.date || "")}${n.link ? " • 🔗 লিংক আছে" : ""}</small><p>${esc(String(n.text || "").slice(0, 140))}${String(n.text || "").length > 140 ? "…" : ""}</p></div>
+        <div class="fx-acts"><button data-ed title="এডিট">✏️</button><button data-up title="ওপরে">↑</button><button data-rm title="মুছুন">🗑</button></div></div>`).join("")
+      : `<div class="box2 empty-box"><div class="big">📰</div><p class="hint">এই টুর্নামেন্টে এখনো কোনো নিউজ নেই।</p></div>`}</div>`;
+    bindTSel(renderNews);
+    const modal = idx => {
+      const isNew = idx == null, n = isNew ? { date: bnToday() } : JSON.parse(JSON.stringify(list[idx]));
+      openModal({ title: isNew ? "+ নতুন নিউজ" : "✏️ নিউজ এডিট", wide: true,
+        body: `<label class="f"><span>শিরোনাম *</span><input name="title" value="${esc(n.title || "")}"></label>
+          <label class="f"><span>তারিখ</span><input name="date" value="${esc(n.date || "")}" placeholder="৩ নভেম্বর, ২০২৬"></label>
+          <label class="f"><span>বিস্তারিত</span><textarea name="text" style="min-height:130px">${esc(n.text || "")}</textarea></label>
+          <label class="f"><span>বিস্তারিত নিউজের লিংক (ঐচ্ছিক — দিলে "আরও পড়ুন" বাটন আসবে ও নতুন ট্যাবে খুলবে)</span><input name="link" value="${esc(n.link || "")}" placeholder="https://..."></label>`,
+        buttons: [{ label: "বাতিল", cls: "ghost", onClick: c => c.close() }, { label: "💾 সেভ করুন", onClick: async c => {
+          const g = k => $(`[name="${k}"]`, c.el).value.trim();
+          if (!g("title")) { toast("শিরোনাম দিন", true); return; }
+          if (g("link") && !/^https?:\/\//i.test(g("link"))) { toast("লিংক http:// বা https:// দিয়ে শুরু হতে হবে", true); return; }
+          const o = {}; ["title", "date", "text", "link"].forEach(k => { if (g(k)) o[k] = g(k); });
+          const next = list.slice(); if (isNew) next.unshift(o); else next[idx] = o;
+          await saveCol(t, "news", next); toast("✅ নিউজ সেভ হয়েছে"); c.close(); renderNews();
+        } }] });
+    };
+    $("#nw-add").addEventListener("click", () => modal(null));
+    $("#nw-list").addEventListener("click", async e => {
+      const row = e.target.closest(".nw-row"), b = e.target.closest("button"); if (!row || !b) return;
+      const i = +row.dataset.i;
+      if (b.hasAttribute("data-ed")) modal(i);
+      else if (b.hasAttribute("data-up")) { if (i > 0) { const n = list.slice(); [n[i - 1], n[i]] = [n[i], n[i - 1]]; try { await saveCol(t, "news", n); renderNews(); } catch (err) { toast(errText(err), true); } } }
+      else if (b.hasAttribute("data-rm")) { if (!confirm("এই নিউজটি মুছে ফেলবেন?")) return; try { await saveCol(t, "news", list.filter((_, k) => k !== i)); toast("মুছে ফেলা হয়েছে"); renderNews(); } catch (err) { toast(errText(err), true); } }
+    });
+  }
+
+  /* ---------- টুর্নামেন্টের মূল তথ্য (ম্যাচ/দল/নিউজ আলাদা ট্যাবে) ---------- */
   function renderEditor(t) {
     const isNew = !t;
     const d = isNew
-      ? { id: "t-" + Date.now().toString(36), title: "", sport: "ফুটবল", status: "upcoming", image: "", short: "", organizer: "", venue: "", district: "ময়মনসিংহ", format: "", start_date: "", end_date: "", teams_count: "", overview: "", fixtures: [], results: [], teams: [], news: [], awards: [] }
+      ? { id: "t-" + Date.now().toString(36), title: "", sport: "ফুটবল", status: "upcoming", image: "", short: "", organizer: "", venue: "", district: "ময়মনসিংহ", format: "", start_date: "", end_date: "", teams_count: "", overview: "", results: [], awards: [] }
       : JSON.parse(JSON.stringify(t));
+    d.results = arr(d.results); d.awards = arr(d.awards);
+    $$(".adm-nav [data-v]").forEach(b => b.classList.toggle("on", b.dataset.v === "list"));
     const el = $("#view");
     const fld = (label, name, val, cls = "", ph = "") => `<label class="f ${cls}"><span>${label}</span><input name="${name}" value="${esc(val)}" placeholder="${esc(ph)}"></label>`;
     el.innerHTML = `
     <form id="ed" autocomplete="off">
-      <div class="ed-head"><button type="button" class="btn small ghost" id="back">← ফিরে যান</button><h2>${isNew ? "নতুন টুর্নামেন্ট" : "টুর্নামেন্ট এডিট"}</h2></div>
+      <div class="page-h"><div class="ph-l"><button type="button" class="btn small ghost" id="back">← ফিরে যান</button><h2>${isNew ? "নতুন টুর্নামেন্ট" : "টুর্নামেন্টের তথ্য"}</h2></div></div>
+      ${isNew ? `<div class="box2 note-box">💡 টুর্নামেন্ট সেভ করার পর ম্যাচ, দল ও নিউজ যোগ করতে বাম মেনুর <b>📅 ম্যাচ</b>, <b>👥 দল</b> ও <b>📰 নিউজ</b> ট্যাব ব্যবহার করুন।</div>` : `
+      <div class="box2 shortcuts"><b>এই টুর্নামেন্টের:</b>
+        <button type="button" class="btn small ghost" data-sc="fixtures">📅 ম্যাচ (${MT.toBn(arr(t.fixtures).length)})</button>
+        <button type="button" class="btn small ghost" data-sc="results">🏁 ফলাফল</button>
+        <button type="button" class="btn small ghost" data-sc="teams">👥 দল ও খেলোয়াড়</button>
+        <button type="button" class="btn small ghost" data-sc="news">📰 নিউজ (${MT.toBn(arr(t.news).length)})</button></div>`}
 
       <div class="box2"><h3>মূল তথ্য</h3><div class="grid2" style="margin-top:12px">
         ${fld("টুর্নামেন্টের নাম *", "title", d.title, "full", "ময়মনসিংহ প্রিমিয়ার ডিভিশন ফুটবল লীগ ২০২৬")}
         <label class="f"><span>খেলার ধরন</span><input name="sport" list="sports" value="${esc(d.sport)}"><datalist id="sports"><option>ফুটবল</option><option>ক্রিকেট</option><option>কাবাডি</option><option>ভলিবল</option><option>হ্যান্ডবল</option></datalist></label>
         <label class="f"><span>স্ট্যাটাস</span><select name="status">${Object.entries(STATUS).map(([k, v]) => `<option value="${k}" ${d.status === k ? "selected" : ""}>${v}</option>`).join("")}</select></label>
-        <label class="f full"><span>সংক্ষিপ্ত বিবরণ (কার্ড ও পেইজের ওপরে দেখাবে)</span><textarea name="short" style="min-height:70px">${esc(d.short)}</textarea></label>
+        <label class="f full"><span>সংক্ষিপ্ত বিবরণ (কার্ড, পেইজের ওপরে ও গুগলে দেখাবে — ৭০–১৬০ অক্ষর ভালো)</span><textarea name="short" style="min-height:70px">${esc(d.short)}</textarea></label>
         ${fld("আয়োজক", "organizer", d.organizer)}
         ${fld("ভেন্যু", "venue", d.venue, "", "ময়মনসিংহ জেলা স্টেডিয়াম")}
         ${fld("জেলা", "district", d.district)}
@@ -653,29 +1028,22 @@
           <button type="button" class="btn small danger" id="rm-img">ছবি সরান</button></div>
         <label class="f"><span>অথবা ছবির লিংক (আপলোড করলে নিজে বসে যাবে)</span><input name="image" id="img-url" value="${esc(d.image)}" placeholder="https://..."></label></div>
 
-      <div class="box2"><h3>সারসংক্ষেপ — "প্রতিযোগিতা সম্পর্কে"</h3><p class="hint">প্রতিটি অনুচ্ছেদ আলাদা লাইনে লিখুন।</p>
+      <div class="box2"><h3>সারসংক্ষেপ — "প্রতিযোগিতা সম্পর্কে"</h3><p class="hint">প্রতিটি অনুচ্ছেদ আলাদা লাইনে লিখুন (কমপক্ষে ২ অনুচ্ছেদ দিলে গুগলে ভালো)।</p>
         <label class="f"><textarea name="overview" style="min-height:150px">${esc(d.overview)}</textarea></label></div>
 
-      <div class="box2"><h3>ফিক্সচার</h3><p class="hint">আসন্ন ম্যাচের তালিকা। তারিখ-সময় দিলে হোমপেইজের "ম্যাচ" অংশে ম্যাচটি নিজে থেকে আসন্ন → 🔴 লাইভ (শুরুর সময় হলে) → সম্পন্ন হয়ে যাবে। ফলাফল দিতে ওপরের "🏁 ফলাফল" ট্যাব ব্যবহার করুন। রাউন্ড/গ্রুপের নাম একই হলে ম্যাচগুলো একসাথে দেখাবে।</p><div id="fx"></div></div>
-      <div class="box2"><h3>ফলাফল</h3><p class="hint">নতুন ফলাফল সহজে দিতে ওপরের "🏁 ফলাফল" ট্যাব ব্যবহার করুন (ফিক্সচারের ম্যাচেই স্কোর বসে)। এই বক্সটি শুধু আলাদা/পুরোনো ফলাফলের জন্য। ম্যাচ শেষ হলে এখানে ফলাফল যোগ করা যায়। "লাইভ ম্যাচ লিংক" দিলে দর্শক ফলাফলের নিচের "▶ ম্যাচ দেখুন" বাটনে ক্লিক করে ম্যাচটি দেখতে পারবে।</p><div id="rs"></div></div>
-      <div class="box2"><h3>দল</h3><p class="hint">দল যোগ করুন, তারপর যেকোনো দলে ক্লিক করে ভেতরে ঢুকলে কোচ, সংক্ষিপ্ত পরিচিতি, যোগাযোগ (ফোন/ফেসবুক) ও প্লেয়ার তালিকা (নামের সাথে ছবি) দিতে পারবেন — সবই ঐচ্ছিক। ফাঁকা রাখলে দর্শক শুধু দলের নাম দেখবে।</p><div id="tm"></div></div>
-      <div class="box2"><h3>নিউজ</h3><div id="nw"></div></div>
-      <div class="box2"><h3>পুরস্কার</h3><div id="aw"></div></div>
+      <div class="box2"><h3>🏅 পুরস্কার</h3><div id="aw"></div></div>
+      ${d.results.length ? `<div class="box2"><h3>পুরোনো ফলাফল তালিকা</h3><p class="hint">নতুন ফলাফল "🏁 ফলাফল" ট্যাব থেকে দিন। এই তালিকা শুধু আগে আলাদাভাবে দেওয়া ফলাফলের জন্য।</p><div id="rs"></div></div>` : ""}
 
       <div class="savebar"><button type="button" class="btn ghost" id="cancel">বাতিল</button><button class="btn" id="save">💾 সেভ করুন</button>
         ${isNew ? "" : `<button type="button" class="btn danger" id="del">🗑 মুছুন</button>`}</div>
     </form>`;
 
-    listEditor($("#fx"), d.fixtures, SCHEMAS.fixtures, "ম্যাচ যোগ করুন");
-    listEditor($("#rs"), d.results, SCHEMAS.results, "ফলাফল যোগ করুন");
-    const tmArr = teamsToEditor(d.teams);
-    teamEditor($("#tm"), tmArr);
-    listEditor($("#nw"), d.news, SCHEMAS.news, "নিউজ যোগ করুন");
     listEditor($("#aw"), d.awards, SCHEMAS.awards, "পুরস্কার যোগ করুন");
-
+    if (d.results.length) listEditor($("#rs"), d.results, SCHEMAS.results, "ফলাফল যোগ করুন");
+    watchDirty();
     const back = () => setView("list");
     $("#back").addEventListener("click", back); $("#cancel").addEventListener("click", back);
-    if (!isNew) $("#del").addEventListener("click", () => removeTournament(t));
+    if (!isNew) { $("#del").addEventListener("click", () => removeTournament(t)); $$("[data-sc]").forEach(b => b.addEventListener("click", () => { selT = t.id; setView(b.dataset.sc); })); }
 
     const setImg = url => { $("#img-url").value = url; $("#img-prev").innerHTML = url ? `<img src="${esc(url)}" alt="">` : "ছবি নেই"; };
     $("#img-url").addEventListener("change", e => setImg(e.target.value.trim()));
@@ -699,24 +1067,23 @@
       e.preventDefault();
       const fd = new FormData(e.target), g = k => (fd.get(k) || "").toString().trim();
       if (!g("title")) { toast("টুর্নামেন্টের নাম দিন", true); return; }
-      const bad = [["video", d.fixtures, "ফিক্সচারের ভিডিও"], ["watch", d.results, "ফলাফলের লাইভ ম্যাচ"], ["link", d.news, "নিউজের"]]
-        .find(([k, rows]) => rows.some(r => String(r[k] || "").trim() && !/^https?:\/\//i.test(String(r[k]).trim())));
-      if (bad) { toast(`${bad[2]} লিংক http:// বা https:// দিয়ে শুরু হতে হবে`, true); return; }
-      const badFb = tmArr.find(t => String(t.facebook || "").trim() && !/^https?:\/\//i.test(String(t.facebook).trim()));
-      if (badFb) { toast(`"${badFb.name}" দলের ফেসবুক লিংক http:// বা https:// দিয়ে শুরু হতে হবে`, true); return; }
+      if (d.results.some(r => String(r.watch || "").trim() && !/^https?:\/\//i.test(String(r.watch).trim()))) { toast("ফলাফলের লাইভ ম্যাচ লিংক http:// বা https:// দিয়ে শুরু হতে হবে", true); return; }
       const row = {
-        id: d.id, title: g("title"), sport: g("sport") || "ফুটবল", status: g("status"), image: g("image"), short: g("short"),
+        title: g("title"), sport: g("sport") || "ফুটবল", status: g("status"), image: g("image"), short: g("short"),
         organizer: g("organizer"), venue: g("venue"), district: g("district"), format: g("format"),
         start_date: g("start_date"), end_date: g("end_date"), teams_count: g("teams_count"), overview: g("overview"),
-        fixtures: cleanRows(d.fixtures, SCHEMAS.fixtures), results: cleanRows(d.results, SCHEMAS.results),
-        news: cleanRows(d.news, SCHEMAS.news), awards: cleanRows(d.awards, SCHEMAS.awards),
-        teams: teamsFromEditor(tmArr)
+        results: cleanRows(d.results, SCHEMAS.results), awards: cleanRows(d.awards, SCHEMAS.awards)
       };
       const b = $("#save"); busy(b, true, "সেভ হচ্ছে…");
-      const { error } = await sb.from("tournaments").upsert(row, { onConflict: "id" });
+      /* নতুন হলে খালি ম্যাচ/দল/নিউজসহ তৈরি; পুরোনো হলে শুধু এই ফর্মের ঘরগুলো বদলায় (ম্যাচ/দল/নিউজ অক্ষত থাকে) */
+      const { error } = isNew
+        ? await sb.from("tournaments").insert(Object.assign({ id: d.id, fixtures: [], teams: [], news: [] }, row))
+        : await sb.from("tournaments").update(row).eq("id", d.id);
       busy(b, false);
       if (error) { toast("সেভ হয়নি: " + errText(error), true); return; }
-      toast("✅ সেভ হয়েছে"); setView("list");
+      toast("✅ সেভ হয়েছে"); dirty = false;
+      if (isNew) { await loadTournaments(); selT = d.id; }
+      setView("list", true);
     });
     window.scrollTo({ top: 0 });
   }

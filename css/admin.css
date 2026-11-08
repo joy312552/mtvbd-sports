@@ -138,3 +138,120 @@ body.admin{background:#eef1f8;min-height:100vh}
 .seo-chk{list-style:none;padding:0 16px 14px}
 .seo-chk li{padding:4px 0;font-size:14.5px}
 .seo-chk .ok{color:#12663a}.seo-chk .no{color:#b3121f}
+
+/* ===== নতুন অ্যাডমিন লেআউট (সাইডবার + কনটেন্ট) ===== */
+.adm-layout{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:100vh}
+.adm-side{background:var(--navy);color:#fff;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;padding:18px 12px;gap:14px}
+.adm-side .adm-brand{padding:4px 10px 10px;border-bottom:1px solid rgba(255,255,255,.08);font-size:17px}
+.adm-nav{display:flex;flex-direction:column;gap:3px;flex:1;overflow:auto}
+.adm-nav button,.adm-nav a{display:flex;align-items:center;gap:11px;border:0;background:none;color:#b7bedb;font:inherit;font-weight:600;font-size:15px;padding:11px 12px;border-radius:11px;cursor:pointer;text-align:left;transition:.15s}
+.adm-nav .ic{width:24px;text-align:center;font-size:18px}
+.adm-nav button:hover,.adm-nav a:hover{background:rgba(255,255,255,.07);color:#fff}
+.adm-nav button.on{background:var(--red);color:#fff;box-shadow:0 6px 16px rgba(225,29,46,.35)}
+.adm-side .adm-user{flex-direction:column;align-items:flex-start;gap:8px;padding:12px 10px 0;border-top:1px solid rgba(255,255,255,.08);word-break:break-all}
+.adm-content{min-width:0}
+.adm-main{max-width:1020px;margin:0 auto;padding:24px 20px 110px}
+.savebar{left:250px}
+.page-h{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.page-h h2{font-size:26px}
+.page-h .ph-acts,.page-h .ph-l{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.muted{color:var(--muted);font-size:14px}
+.sb-note{color:var(--muted);font-size:13.5px;align-self:center}
+
+/* টুর্নামেন্ট বাছাই বার */
+.tsel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 4px 14px rgba(10,15,36,.04)}
+.tsel label{font-weight:700;font-size:14.5px}
+.tsel select{flex:1;min-width:220px;font:inherit;font-size:15.5px;font-weight:600;border:1px solid #d5dbec;border-radius:10px;padding:10px 12px;background:#f8f9fd;outline:none}
+.tsel select:focus{border-color:var(--red)}
+.filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.filters input,.filters select{font:inherit;font-size:15px;border:1px solid #d5dbec;border-radius:10px;padding:10px 12px;background:#fff;outline:none;min-width:150px}
+.filters input{flex:1;min-width:200px}
+.filters input:focus,.filters select:focus{border-color:var(--red)}
+
+/* ড্যাশবোর্ড */
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 12px;text-align:center;box-shadow:0 4px 14px rgba(10,15,36,.04)}
+.stat b{display:block;font-size:30px;line-height:1.2;color:var(--navy)}
+.stat span{font-size:13px;color:var(--muted)}
+.stat.hot{background:linear-gradient(135deg,#e11d2e,#a30f1d);border-color:transparent}.stat.hot b,.stat.hot span{color:#fff}
+.stat.warn{background:#fff6e0;border-color:#f3d27a}
+.dash-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}
+.inline-form{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.inline-form input{flex:1;min-width:180px;font:inherit;border:1px solid #d5dbec;border-radius:10px;padding:10px 12px;outline:none}
+.qa{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dm{display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)}
+.dm:first-of-type{border-top:0}
+.dm-main{flex:1;min-width:200px}
+.dm-main b{display:block;line-height:1.4}.dm-main em,.fx-main em{font-style:normal;color:var(--muted);font-weight:500;margin:0 4px}
+.dm-main small{color:var(--muted)}
+.dm-score{display:flex;gap:6px;align-items:center}
+.dm-score input{width:56px;text-align:center;font:inherit;font-size:18px;font-weight:700;border:1px solid #d5dbec;border-radius:9px;padding:6px 2px;outline:none}
+.dm-score input:focus{border-color:var(--red)}
+
+/* ম্যাচ তালিকা */
+.fx-round{position:sticky;top:0;z-index:5;background:#e4e8f6;color:#27336b;font-weight:700;border-radius:9px;padding:6px 12px;margin:14px 0 8px;font-size:14.5px}
+.fx-row,.nw-row{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 12px;margin-bottom:7px;transition:.15s}
+.fx-row:hover,.nw-row:hover{border-color:#b9c3e6;box-shadow:0 4px 12px rgba(10,15,36,.06)}
+.fx-no{min-width:52px;text-align:center;background:#eef1f8;border-radius:8px;padding:3px 6px;font-size:13px;font-weight:700;color:#3a4266}
+.fx-main{flex:1;min-width:0}
+.fx-main b{display:block;line-height:1.4}.fx-main small{color:var(--muted);display:block}
+.nw-row p{color:#4a5272;font-size:14px;margin-top:2px}
+.fx-acts{display:flex;gap:4px;flex:0 0 auto}
+.fx-acts button{border:1px solid #d5dbec;background:#fff;border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:14px}
+.fx-acts button:hover{background:#eef1f8}.fx-acts button[data-rm]:hover{background:#c4111f;border-color:#c4111f}
+.more{display:block;margin:12px auto}
+.rtag.warn{background:#fff0d6;color:#8a5a00}
+.empty-box{text-align:center;padding:36px 20px}.empty-box .big{font-size:42px}
+.note-box{background:#eaf2ff;border-color:#c5d9ff}
+.shortcuts{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.chips button{border:1px solid #d5dbec;background:#f6f8fd;border-radius:999px;padding:2px 11px;font:inherit;font-size:12.5px;cursor:pointer;color:#3a4266}
+.chips button:hover{background:var(--navy);color:#fff;border-color:var(--navy)}
+.dt-note{grid-column:span 6;min-height:0}
+
+/* মোডাল */
+body.no-scroll{overflow:hidden}
+.am{position:fixed;inset:0;background:rgba(7,11,28,.65);z-index:100;display:grid;place-items:center;padding:14px;backdrop-filter:blur(2px)}
+.am-box{background:#fff;border-radius:18px;width:100%;max-width:520px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 30px 70px rgba(0,0,0,.4)}
+.am-box.wide{max-width:760px}
+.am-h{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line)}
+.am-h h3{font-size:19px}
+.am-x{border:0;background:#eef1f8;width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:15px}
+.am-b{padding:16px 20px 6px;overflow:auto;flex:1}
+.am-f{display:flex;gap:10px;justify-content:flex-end;padding:12px 20px 16px;border-top:1px solid var(--line);flex-wrap:wrap}
+
+/* লোডিং স্কেলিটন (অ্যাডমিন) */
+.sk-box{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
+.sk-box i{display:block;height:16px;border-radius:8px;margin:10px 0;background:linear-gradient(90deg,#eceff8 25%,#f7f8fd 37%,#eceff8 63%);background-size:400% 100%;animation:skl 1.3s infinite}
+.sk-box i:first-child{width:45%;height:20px}.sk-box i:nth-child(2){width:90%}.sk-box i:nth-child(3){width:70%}
+@keyframes skl{0%{background-position:100% 50%}100%{background-position:0 50%}}
+
+/* SEO */
+.bh{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.hc{display:flex;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+.hc>span{font-weight:700;width:22px;flex:0 0 auto}
+.hc small{display:block;color:#5b6385;font-weight:400}
+.hc.ok>span{color:#12663a}.hc.no>span{color:#b3121f}.hc.warn>span{color:#a35a00}
+.linkgrid{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.seo-body{padding:0 16px 16px}
+.serp{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:12px;background:#fff}
+.serp-u{font-size:12.5px;color:#4d5156}.serp-t{color:#1a0dab;font-size:19px;line-height:1.3;margin:2px 0}.serp-d{color:#4d5156;font-size:14px}
+.chk{display:flex;gap:8px;align-items:center;margin-bottom:10px;font-size:14.5px}
+
+/* মোবাইল */
+@media(max-width:900px){
+  .adm-layout{grid-template-columns:1fr}
+  .adm-side{position:sticky;top:0;height:auto;z-index:40;flex-direction:row;flex-wrap:wrap;align-items:center;padding:8px 10px;gap:6px}
+  .adm-side .adm-brand{border:0;padding:4px 6px;flex:1;font-size:15px}
+  .adm-side .adm-user{border:0;padding:0;flex-direction:row;align-items:center;font-size:12px}.adm-side .adm-user span{display:none}
+  .adm-nav{order:3;flex:0 0 100%;flex-direction:row;overflow-x:auto;gap:4px;padding-bottom:2px}
+  .adm-nav button,.adm-nav a{flex:0 0 auto;flex-direction:column;gap:1px;padding:7px 11px;font-size:12px;min-width:72px;text-align:center}
+  .adm-nav .ic{font-size:18px}
+  .savebar{left:0}
+  .stats{grid-template-columns:repeat(2,1fr)}.stats .stat:last-child{grid-column:span 2}
+  .dash-grid{grid-template-columns:1fr}
+  .adm-main{padding:16px 12px 110px}
+  .fx-row{flex-wrap:wrap}.fx-no{min-width:0}
+  .am{padding:0;align-items:end}.am-box{border-radius:18px 18px 0 0;max-height:94vh}
+}
+@media(max-width:700px){.row-grid .dt-note{grid-column:span 2}}

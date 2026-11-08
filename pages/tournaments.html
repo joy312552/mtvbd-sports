@@ -11,10 +11,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" href="/js/app.js" as="script">
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body data-page="tournaments">
-<header id="site-header"></header>
+<header id="site-header" class="sk-header" aria-hidden="true"><div class="container"><div class="sk-brand"><i class="sk sk-logo"></i><div><i class="sk sk-l1"></i><i class="sk sk-l2"></i></div></div></div></header>
 <div class="page-hero"><div class="container">
   <div class="crumbs"><a href="/">হোম</a> / <span>টুর্নামেন্ট</span></div>
   <h1>সকল টুর্নামেন্ট</h1>
@@ -27,9 +28,9 @@
     <button class="chip" data-filter="upcoming">আসন্ন</button>
     <button class="chip" data-filter="completed">সম্পন্ন</button>
   </div>
-  <div class="grid" id="t-grid"><!--SSR_GRID--></div>
+  <div class="grid" id="t-grid"><!--SSR_GRID--><div class="card sk-card" aria-hidden="true"><div class="cover sk"></div><div class="card-body"><i class="sk sk-l5"></i><i class="sk sk-l4"></i><i class="sk sk-l2"></i></div></div><div class="card sk-card" aria-hidden="true"><div class="cover sk"></div><div class="card-body"><i class="sk sk-l5"></i><i class="sk sk-l4"></i><i class="sk sk-l2"></i></div></div><div class="card sk-card" aria-hidden="true"><div class="cover sk"></div><div class="card-body"><i class="sk sk-l5"></i><i class="sk sk-l4"></i><i class="sk sk-l2"></i></div></div></div>
 </div></section></main>
-<footer id="site-footer"></footer>
+<footer id="site-footer" class="sk-footer" aria-hidden="true"><div class="container"><i class="sk sk-l3"></i><i class="sk sk-l4"></i><i class="sk sk-l4"></i></div></footer>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/js/config.js"></script>
 <script src="/js/data.js"></script>

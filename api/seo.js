@@ -13,8 +13,14 @@ module.exports = async (req, res) => {
       `User-agent: *\nAllow: /\nDisallow: /admin.html\nDisallow: /api/\nDisallow: /pages/\n\nSitemap: ${site}/sitemap.xml\n`, "public, max-age=0, s-maxage=3600");
   }
 
+  if (f === "gfile") {                    // সার্চ কনসোলের HTML ফাইল পদ্ধতি — শুধু অ্যাডমিনে সেভ করা ফাইলের নামেই সাড়া দেয়
+    const want = String((data.settings || {}).gsc_file || "").trim().toLowerCase(), got = String((req.query || {}).file || "").trim().toLowerCase();
+    if (want && got === want && /^google[a-z0-9]{10,40}\.html$/.test(got)) return L.send(res, 200, "text/html", "google-site-verification: " + got, "public, max-age=0, s-maxage=60");
+    return L.send(res, 404, "text/plain", "Not found", "public, max-age=0, s-maxage=30");
+  }
   const urls = [["/", "", "daily", "1.0", ""], ["/tournaments", "", "daily", "0.9", ""]];
   data.tournaments.forEach(t => {
+    if (L.tSeo(data.settings, t.id).noindex) return;
     const lm = L.lastmod(t), img = L.safeUrl(t.image);
     const hasFx = t.fixtures.some(a => a && a.home), hasRes = t.fixtures.some(a => a && L.hasRes(a)) || t.results.length;
     const live = t.status !== "completed";

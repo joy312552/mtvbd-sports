@@ -72,6 +72,8 @@ function siteUrl(req, settings) {
   const h = (req.headers["x-forwarded-host"] || req.headers.host || "sports.mtvbd.com").split(",")[0].trim();
   return "https://" + h;
 }
+/* টুর্নামেন্ট অনুযায়ী আলাদা SEO (অ্যাডমিন থেকে দেওয়া): settings-এ seo_t_<id> */
+function tSeo(S, id) { try { const o = JSON.parse((S || {})["seo_t_" + id] || "{}"); return o && typeof o === "object" ? o : {}; } catch (e) { return {}; } }
 const tPath = (id, tab) => "/tournament/" + encodeURIComponent(id) + (tab && tab !== "overview" ? "/" + tab : "");
 
 /* ---------- তারিখ ---------- */
@@ -187,7 +189,8 @@ function headHTML(o, S, site) {
     /^[\w-]{10,100}$/.test(S.gsc_verify || "") ? `<meta name="google-site-verification" content="${esc(S.gsc_verify)}">` : "",
     /^[\w-]{10,100}$/.test(S.bing_verify || "") ? `<meta name="msvalidate.01" content="${esc(S.bing_verify)}">` : "",
     (o.ld || []).map(ld).join("\n"),
-    gaSnippet(S.ga_id)
+    gaSnippet(S.ga_id),
+    cfg().url ? `<link rel="preconnect" href="${esc(cfg().url)}" crossorigin>` : ""
   ];
   return out.filter(Boolean).join("\n");
 }
@@ -202,7 +205,11 @@ function cardHTML(t) {
 }
 const ORD = { live: 0, upcoming: 1, completed: 2 };
 const sortT = list => [...list].sort((a, b) => (ORD[a.status] ?? 3) - (ORD[b.status] ?? 3));
-function detailHTML(t, tab) {
+function relatedHTML(all, t) {
+  const rel = all.filter(x => x.id !== t.id && x.title).sort((a, b) => (b.sport === t.sport) - (a.sport === t.sport)).slice(0, 5);
+  return rel.length ? `<h2>আরও টুর্নামেন্ট</h2><ul>${rel.map(x => `<li><a href="${tPath(x.id)}">${esc(x.title)}</a></li>`).join("")}</ul>` : "";
+}
+function detailHTML(t, tab, all) {
   const nav = `<nav class="seo-tabs" aria-label="${esc(t.title)}">${TABS.map(([k, l]) => `<a href="${tPath(t.id, k)}"${k === tab ? ' aria-current="page"' : ""}>${l}</a>`).join(" • ")}</nav>`;
   const head = `<div class="container ssr-seo"><p><a href="/">হোম</a> / <a href="/tournaments">টুর্নামেন্ট</a> / ${esc(t.title)}</p><h1>${esc(t.title)}</h1><p>${esc(t.short)}</p>${nav}`;
   let body = "";
@@ -216,7 +223,7 @@ function detailHTML(t, tab) {
   if (tab === "teams") body = `<h2>অংশগ্রহণকারী দল</h2><ul>${teamList(t.teams).map(x => `<li>${esc(x.name)}${x.coach ? " — কোচ: " + esc(x.coach) : ""}${x.info ? " — " + esc(clip(x.info, 160)) : ""}</li>`).join("")}</ul>`;
   if (tab === "news") body = `<h2>নিউজ</h2>${t.news.map(n => `<article><h3>${esc(n.title)}</h3><p>${esc(n.text)}</p></article>`).join("")}`;
   if (tab === "awards") body = `<h2>পুরস্কার</h2><ul>${t.awards.map(a => `<li>${esc(a.title)}: ${esc(a.winner)}</li>`).join("")}</ul>`;
-  return head + body + "</div>";
+  return head + body + relatedHTML(all || [], t) + "</div>";
 }
 
 /* ---------- টেমপ্লেট ---------- */
@@ -242,4 +249,4 @@ function send(res, status, type, body, cache) {
 }
 
 module.exports = { MT, esc, clip, safeUrl, bnNum, loadAll, siteUrl, tPath, isoDate, tRange, lastmod, teamList, hasRes, orgLd, crumbLd, tournamentLd, newsLd,
-  headHTML, cardHTML, sortT, detailHTML, template, inject, send, DEFAULTS, TABS, SPORT_EN, STATUS };
+  tSeo, headHTML, cardHTML, sortT, detailHTML, template, inject, send, DEFAULTS, TABS, SPORT_EN, STATUS };

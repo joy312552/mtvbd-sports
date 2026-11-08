@@ -11,12 +11,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" href="/js/app.js" as="script">
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body data-page="detail">
-<header id="site-header"></header>
-<main id="detail"><!--SSR_DETAIL--></main>
-<footer id="site-footer"></footer>
+<header id="site-header" class="sk-header" aria-hidden="true"><div class="container"><div class="sk-brand"><i class="sk sk-logo"></i><div><i class="sk sk-l1"></i><i class="sk sk-l2"></i></div></div></div></header>
+<main id="detail"><div class="sk-detail" aria-hidden="true"><div class="sk-hero"><div class="container"><i class="sk sk-l2"></i><i class="sk sk-title"></i><i class="sk sk-l4"></i></div></div><div class="container"><div class="sk-tabs"><i class="sk"></i><i class="sk"></i><i class="sk"></i><i class="sk"></i></div><div class="sk sk-box2"></div><div class="sk sk-box2"></div></div></div><!--SSR_DETAIL--></main>
+<footer id="site-footer" class="sk-footer" aria-hidden="true"><div class="container"><i class="sk sk-l3"></i><i class="sk sk-l4"></i><i class="sk sk-l4"></i></div></footer>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/js/config.js"></script>
 <script src="/js/data.js"></script>

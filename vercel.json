@@ -12,6 +12,7 @@
     { "source": "/tournaments", "destination": "/api/render?p=tournaments" },
     { "source": "/tournament/:id/:tab", "destination": "/api/render?p=tournament&id=:id&tab=:tab" },
     { "source": "/tournament/:id", "destination": "/api/render?p=tournament&id=:id" },
+    { "source": "/:file(google[a-zA-Z0-9]+\\.html)", "destination": "/api/seo?f=gfile&file=:file" },
     { "source": "/sitemap.xml", "destination": "/api/seo?f=sitemap" },
     { "source": "/robots.txt", "destination": "/api/seo?f=robots" }
   ],
